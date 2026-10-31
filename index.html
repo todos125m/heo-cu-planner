@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <title>HEO-Cu Experiment Planner</title>
+<script>
+/* default is dark; a saved choice wins */
+(function () {
+  var t = 'dark';
+  try { var s = localStorage.getItem('heo-theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
+  document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 <style>
 /* Layout concept: a lab-bench worksheet with two tabs. "Plan" holds the trend plot beside the decision, settings and data. "Analyze LSV" turns a raw sweep into the numbers the planner needs. */
 :root {
@@ -52,6 +60,7 @@ h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; margin: 0; font-we
   font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); background: transparent;
   border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; margin-bottom: -1px; cursor: pointer; border-radius: 0;
 }
+.themebtn { margin-left: auto; align-self: center; margin-bottom: 4px; padding: 6px 12px; }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cu); }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 @media (min-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .grid.lsv { grid-template-columns: 340px minmax(0, 1fr); } }
@@ -140,6 +149,7 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
   <div class="tabs" role="tablist" aria-label="Tools">
     <button class="tab" id="tabplan" role="tab" aria-selected="true" aria-controls="viewplan" type="button">Plan</button>
     <button class="tab" id="tablsv" role="tab" aria-selected="false" aria-controls="viewlsv" type="button">Analyze LSV</button>
+    <button class="ghost themebtn" id="theme" type="button" aria-label="Switch between dark and light theme"></button>
   </div>
 
   <!-- ============ PLAN ============ -->
@@ -261,6 +271,7 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
   </div>
 
   <footer>
+    <div><button class="ghost" id="download" type="button">⬇ Download this tool (single HTML file, works offline)</button></div>
     <div>Paper data: Mehrabi-Kalajahi et al., <em>Scientific Reports</em> 16, 20035 (2026), values read from the article text. Bare nickel foam reference: <span id="nf"></span>.</div>
     <div>Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.</div>
   </footer>
@@ -636,6 +647,30 @@ function runLSV() {
   msg.textContent = res.warn.join(' ') + (res.sign < 0 ? ' Current sign was flipped.' : '');
   drawLSV(res, o.target);
 }
+
+/* ---------- theme and download ---------- */
+function syncThemeBtn() {
+  var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  $('theme').textContent = dark ? '☀ Light' : '☾ Dark';
+}
+$('theme').addEventListener('click', function () {
+  var next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('heo-theme', next); } catch (e) {}
+  syncThemeBtn();
+});
+syncThemeBtn();
+$('download').addEventListener('click', function () {
+  var save = function (text) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'text/html;charset=utf-8' }));
+    a.download = 'HEO-Cu_Experiment_Planner.html';
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+  if (window.fetch && /^https?:/.test(location.protocol)) {
+    fetch(location.href.split('#')[0]).then(function (r) { return r.text(); }).then(save).catch(function () { save('<!doctype html>\n' + document.documentElement.outerHTML); });
+  } else save('<!doctype html>\n' + document.documentElement.outerHTML);
+});
 
 /* ---------- events ---------- */
 function showTab(which) {
