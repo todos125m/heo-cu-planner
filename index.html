@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>HEO-Cu Experiment Planner</title>
+<style>
+/* Layout concept: a lab-bench worksheet with two tabs. "Plan" holds the trend plot beside the decision, settings and data. "Analyze LSV" turns a raw sweep into the numbers the planner needs. */
+:root {
+  --bg: #edf1f2;
+  --panel: #f8fafa;
+  --ink: #12212a;
+  --muted: #566871;
+  --line: #cdd8dc;
+  --cu: #b4531f;
+  --band: #23737f;
+  --soft: #e3eaec;
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d171c; --panel: #132128; --ink: #e6eef1; --muted: #92a5ae;
+    --line: #27373f; --cu: #ea8c5e; --band: #5bb7c3; --soft: #1a2c34;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d171c; --panel: #132128; --ink: #e6eef1; --muted: #92a5ae;
+  --line: #27373f; --cu: #ea8c5e; --band: #5bb7c3; --soft: #1a2c34;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-ui);
+  font-size: 15px; line-height: 1.5;
+  padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+header { display: flex; flex-direction: column; gap: 6px; max-width: 72ch; }
+h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; margin: 0; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); }
+.eyebrow { font-family: var(--font-data); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--cu); }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.tab {
+  font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); background: transparent;
+  border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; margin-bottom: -1px; cursor: pointer; border-radius: 0;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cu); }
+.grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@media (min-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .grid.lsv { grid-template-columns: 340px minmax(0, 1fr); } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+h2 { font-size: 13px; margin: 0 0 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin-bottom: 12px; }
+label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); min-width: 0; }
+label.chk { flex-direction: row; align-items: center; gap: 8px; color: var(--ink); margin-top: 12px; }
+select, input[type="number"], textarea {
+  font: inherit; font-size: 14px; color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px; padding: 7px 9px; min-width: 0; width: 100%;
+}
+textarea { font-family: var(--font-data); font-size: 12.5px; min-height: 170px; resize: vertical; line-height: 1.4; }
+select:focus-visible, input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--cu); outline-offset: 2px; }
+input[type="range"] { width: 100%; accent-color: var(--cu); }
+input[type="checkbox"] { accent-color: var(--cu); width: 16px; height: 16px; }
+.val { font-family: var(--font-data); color: var(--ink); }
+#plot, #lsvplot, #tafplot { width: 100%; position: relative; touch-action: pan-y; }
+#plot svg, #lsvplot svg, #tafplot svg { display: block; width: 100%; }
+.axis text, .lbl { fill: var(--muted); font-family: var(--font-data); font-size: 11px; }
+.gridline { stroke: var(--line); stroke-width: 1; }
+.readout { font-family: var(--font-data); font-size: 12.5px; color: var(--muted); min-height: 2.6em; margin-top: 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; display: inline-block; }
+.pick { border-left: 3px solid var(--cu); padding-left: 14px; }
+.pick .big { font-size: 2rem; line-height: 1.1; font-weight: 700; font-family: var(--font-data); letter-spacing: -0.02em; }
+.pick .sub { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+.pick .comp { font-family: var(--font-data); font-size: 12.5px; margin-top: 8px; color: var(--ink); }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.noteinfo { font-family: var(--font-data); font-size: 12.5px; color: var(--ink); margin: 10px 0 0; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+td { padding: 5px 6px; border-bottom: 1px solid var(--soft); font-family: var(--font-data); }
+td.src { font-family: var(--font-ui); font-size: 12px; color: var(--muted); }
+button {
+  font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer;
+  background: var(--cu); color: var(--bg); border: 0; border-radius: 4px; padding: 8px 12px;
+}
+button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+button.x { background: transparent; color: var(--muted); border: 0; padding: 2px 6px; font-size: 16px; line-height: 1; }
+.btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.addrow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; margin-top: 12px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.fields .wide { grid-column: 1 / -1; }
+.msg { font-size: 12.5px; color: var(--cu); min-height: 1.4em; margin-top: 6px; }
+.results { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.stat .v { font-family: var(--font-data); font-size: 1.7rem; font-weight: 500; line-height: 1.2; }
+.stat .u { font-size: 12.5px; color: var(--muted); }
+.plots { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1180px) { .plots { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.plots h3 { font-size: 12.5px; font-weight: 600; color: var(--muted); margin: 0 0 4px; }
+footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { button { transition: opacity .15s; } button:hover { opacity: .88; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cu-modified spinel HEO · OER on nickel foam</div>
+    <h1>HEO-Cu Experiment Planner</h1>
+    <p class="lede">Two tools for the Cu-loading series. Analyze LSV turns a raw voltammogram into overpotential and Tafel slope. Plan fits a trend with its uncertainty through the measurements and proposes the next Cu loading to run. It starts from the five values in the paper.</p>
+  </header>
+
+  <div class="tabs" role="tablist" aria-label="Tools">
+    <button class="tab" id="tabplan" role="tab" aria-selected="true" aria-controls="viewplan" type="button">Plan</button>
+    <button class="tab" id="tablsv" role="tab" aria-selected="false" aria-controls="viewlsv" type="button">Analyze LSV</button>
+  </div>
+
+  <!-- ============ PLAN ============ -->
+  <div class="grid" id="viewplan" role="tabpanel" aria-labelledby="tabplan">
+    <section class="card" aria-label="Trend and next experiment">
+      <div class="toolbar">
+        <label>Metric
+          <select id="metric">
+            <option value="eta">Overpotential at 10 mA/cm² (mV)</option>
+            <option value="tafel">Tafel slope (mV/dec)</option>
+            <option value="rct">Charge-transfer resistance (Ω)</option>
+            <option value="cur">Steady current, 36,000 s (mA/cm²)</option>
+          </select>
+        </label>
+      </div>
+      <div id="plot"></div>
+      <div class="readout" id="readout" aria-live="polite"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--cu);border-radius:50%"></i>Paper value</span>
+        <span><i class="sw" style="border:2px solid var(--cu);border-radius:50%"></i>Added by you</span>
+        <span><i class="sw" style="background:var(--band);opacity:.35"></i>95% band of the trend</span>
+        <span><i class="sw" style="background:var(--cu);opacity:.35"></i>Expected improvement</span>
+      </div>
+    </section>
+
+    <div class="col">
+      <section class="card pick" id="pick" aria-live="polite"></section>
+
+      <section class="card">
+        <h2>Model settings</h2>
+        <label>Smoothness: correlation length <span class="val" id="ellv"></span>
+          <input type="range" id="ell" min="5" max="30" step="1" value="12">
+        </label>
+        <div style="height:12px"></div>
+        <label>Assumed measurement noise <span class="val" id="noisev"></span>
+          <input type="range" id="noise" min="0" max="40" step="1" value="10">
+        </label>
+        <label class="chk"><input type="checkbox" id="repnoise" checked> Estimate noise from replicates when available</label>
+        <p class="noteinfo" id="noiseinfo"></p>
+        <p class="note" style="margin-top:10px">The paper reports one sample per loading and no error bars, so the noise is assumed until replicates are entered. Raise it if you expect poor reproducibility; the band widens and the plan favors repeating runs.</p>
+      </section>
+
+      <section class="card">
+        <h2>Measurements</h2>
+        <div class="tablewrap">
+          <table>
+            <thead><tr><th>Cu %</th><th id="valhead">Value</th><th>Source</th><th></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="addrow">
+          <label>Cu loading (%)<input type="number" id="addcu" min="5" max="75" step="0.5" inputmode="decimal" placeholder="45"></label>
+          <label><span id="addlabel">Value</span><input type="number" id="addval" step="any" inputmode="decimal" placeholder="e.g. 240"></label>
+          <button id="add" type="button">Add</button>
+        </div>
+        <p class="note" style="margin-top:8px">Enter the same Cu loading more than once to record replicates.</p>
+        <div class="msg" id="msg" role="status"></div>
+        <button class="ghost" id="reset" type="button">Reset to paper values</button>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ ANALYZE LSV ============ -->
+  <div class="grid lsv" id="viewlsv" role="tabpanel" aria-labelledby="tablsv" hidden>
+    <section class="card" aria-label="LSV input">
+      <h2>Linear sweep data</h2>
+      <label>Paste two columns: potential (V) and current. Header lines are ignored.
+        <textarea id="lsvdata" spellcheck="false" placeholder="1.05, 0.8&#10;1.10, 1.9&#10;1.15, 4.7&#10;..."></textarea>
+      </label>
+      <div class="fields">
+        <label>Reference electrode
+          <select id="lsvref">
+            <option value="ag">Ag/AgCl (sat. KCl), +0.197 V</option>
+            <option value="sce">SCE, +0.241 V</option>
+            <option value="hg">Hg/HgO (1 M KOH), +0.098 V</option>
+            <option value="rhe">Already vs RHE</option>
+          </select>
+        </label>
+        <label>Electrolyte pH<input type="number" id="lsvph" step="0.1" value="13" inputmode="decimal"></label>
+        <label>Current column is
+          <select id="lsvunit">
+            <option value="j">Current density (mA/cm²)</option>
+            <option value="i">Current (mA)</option>
+          </select>
+        </label>
+        <label>Electrode area (cm²)<input type="number" id="lsvarea" step="any" value="0.25" inputmode="decimal"></label>
+        <label>Series resistance Ru (Ω), optional<input type="number" id="lsvru" step="any" value="0" inputmode="decimal"></label>
+        <label>Target density (mA/cm²)<input type="number" id="lsvtarget" step="any" value="10" inputmode="decimal"></label>
+        <label>Tafel fit from (mA/cm²)<input type="number" id="lsvlo" step="any" value="1" inputmode="decimal"></label>
+        <label>Tafel fit to (mA/cm²)<input type="number" id="lsvhi" step="any" value="10" inputmode="decimal"></label>
+      </div>
+      <div class="btnrow">
+        <button id="lsvgo" type="button">Analyze</button>
+        <button id="lsvex" class="ghost" type="button">Load synthetic example</button>
+        <button id="lsvclr" class="ghost" type="button">Clear</button>
+      </div>
+      <div class="msg" id="lsvmsg" role="status"></div>
+      <p class="note">Potentials convert as E(RHE) = E(ref) + E°(ref) + 0.0591 × pH at 25 °C. Overpotential is E(RHE) − 1.23 V. Only the forward sweep up to the highest potential is used. If most currents are negative the sign is flipped.</p>
+    </section>
+
+    <div class="col">
+      <section class="card">
+        <h2>Result</h2>
+        <div class="results" id="lsvres" aria-live="polite"></div>
+        <div class="plots">
+          <div><h3>Polarization curve</h3><div id="lsvplot"></div></div>
+          <div><h3>Tafel plot</h3><div id="tafplot"></div></div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Send to the planner</h2>
+        <div class="addrow" style="grid-template-columns: 1fr auto">
+          <label>Cu loading of this sample (%)<input type="number" id="lsvcu" min="5" max="75" step="0.5" inputmode="decimal" placeholder="e.g. 40"></label>
+          <button id="lsvadd" type="button">Add overpotential and Tafel</button>
+        </div>
+        <p class="note" style="margin-top:8px">Adds the two values to the Plan tab as measurements for this Cu loading.</p>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    <div>Paper data: Mehrabi-Kalajahi et al., <em>Scientific Reports</em> 16, 20035 (2026), values read from the article text. Bare nickel foam reference: <span id="nf"></span>.</div>
+    <div>Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.</div>
+  </footer>
+</div>
+
+<script>
+/* ---------- shared helpers and model ---------- */
+var PAPER = {
+  eta:   [[20,470],[30,376],[40,252],[50,262],[60,371]],
+  tafel: [[20,100.4],[30,91.8],[40,64.5],[50,72.3],[60,76.9]],
+  rct:   [[20,177],[30,158],[40,82],[50,114],[60,119]],
+  cur:   [[20,22],[30,28],[40,44],[50,35],[60,31]]
+};
+var META = {
+  eta:   { label: 'Overpotential', unit: 'mV', dir: -1, dec: 0, nf: '570 mV overpotential', ph: '240' },
+  tafel: { label: 'Tafel slope', unit: 'mV/dec', dir: -1, dec: 1, nf: '134.4 mV/dec', ph: '60' },
+  rct:   { label: 'Rct', unit: 'Ω', dir: -1, dec: 0, nf: '212 Ω', ph: '80' },
+  cur:   { label: 'Steady current', unit: 'mA/cm²', dir: 1, dec: 0, nf: '≈15 mA/cm²', ph: '45' }
+};
+var XMIN = 5, XMAX = 75, STEP = 0.5;
+
+function chol(A) {
+  var n = A.length, L = [], i, j, k, s;
+  for (i = 0; i < n; i++) L.push(new Array(n).fill(0));
+  for (i = 0; i < n; i++) for (j = 0; j <= i; j++) {
+    s = A[i][j];
+    for (k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+    L[i][j] = (i === j) ? Math.sqrt(Math.max(s, 1e-10)) : s / L[j][j];
+  }
+  return L;
+}
+function solveL(L, b) { var n = b.length, x = new Array(n), i, k, s; for (i = 0; i < n; i++) { s = b[i]; for (k = 0; k < i; k++) s -= L[i][k] * x[k]; x[i] = s / L[i][i]; } return x; }
+function solveLT(L, b) { var n = b.length, x = new Array(n), i, k, s; for (i = n - 1; i >= 0; i--) { s = b[i]; for (k = i + 1; k < n; k++) s -= L[k][i] * x[k]; x[i] = s / L[i][i]; } return x; }
+function erf(x) { var t = 1 / (1 + 0.3275911 * Math.abs(x)); var y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x); return x >= 0 ? y : -y; }
+function Phi(z) { return 0.5 * (1 + erf(z / Math.SQRT2)); }
+function phi(z) { return Math.exp(-0.5 * z * z) / Math.sqrt(2 * Math.PI); }
+
+/* Replicate noise: pooled standard deviation inside groups that share a Cu loading */
+function groupsOf(data) {
+  var g = {};
+  data.forEach(function (d) { var k = (Math.round(d.cu * 2) / 2).toFixed(1); (g[k] = g[k] || { x: Math.round(d.cu * 2) / 2, v: [] }).v.push(d.y); });
+  return Object.keys(g).map(function (k) { return g[k]; });
+}
+function noiseInfo(data) {
+  var ss = 0, dof = 0;
+  groupsOf(data).forEach(function (g) {
+    if (g.v.length < 2) return;
+    var m = g.v.reduce(function (a, b) { return a + b; }, 0) / g.v.length;
+    g.v.forEach(function (v) { ss += (v - m) * (v - m); });
+    dof += g.v.length - 1;
+  });
+  return dof > 0 ? { fromReps: true, sd: Math.sqrt(ss / dof), dof: dof } : { fromReps: false };
+}
+
+/* data: array of {cu, y, src}; noise: {mode:'frac', v} (fraction of data spread) or {mode:'abs', v} (metric units) */
+function fit(data, dir, ell, noise) {
+  var n = data.length;
+  if (n === 0) return null;
+  var w = data.map(function (d) { return -dir * d.y; });
+  var wm = w.reduce(function (a, b) { return a + b; }, 0) / n;
+  var ws = Math.sqrt(w.reduce(function (a, b) { return a + (b - wm) * (b - wm); }, 0) / n) || 1;
+  var wn = w.map(function (v) { return (v - wm) / ws; });
+  var nz = noise.mode === 'abs' ? noise.v / ws : noise.v;
+  nz = Math.max(nz, 0.01);
+  var kern = function (a, b) { var d = (a - b) / ell; return Math.exp(-0.5 * d * d); };
+  var K = data.map(function (di, i) { return data.map(function (dj, j) { return kern(di.cu, dj.cu) + (i === j ? nz * nz + 1e-6 : 0); }); });
+  var L = chol(K), alpha = solveLT(L, solveL(L, wn));
+  var best = Math.min.apply(null, wn);
+  var xs = [], mean = [], lo = [], hi = [], ei = [], x, i, ks, mu, v, sd, z, imp, a, b;
+  for (x = XMIN; x <= XMAX + 1e-9; x += STEP) {
+    ks = data.map(function (d) { return kern(x, d.cu); });
+    mu = 0; for (i = 0; i < n; i++) mu += ks[i] * alpha[i];
+    v = solveL(L, ks);
+    var vv = 1; for (i = 0; i < n; i++) vv -= v[i] * v[i];
+    sd = Math.sqrt(Math.max(vv, 1e-9));
+    z = (best - mu) / sd;
+    imp = (best - mu) * Phi(z) + sd * phi(z);
+    a = -dir * (wm + ws * (mu - 2 * sd));
+    b = -dir * (wm + ws * (mu + 2 * sd));
+    xs.push(x); mean.push(-dir * (wm + ws * mu)); lo.push(Math.min(a, b)); hi.push(Math.max(a, b)); ei.push(Math.max(imp, 0));
+  }
+  /* suggestions stay between the lowest and highest tested loading; far edges only look attractive because the model knows little there */
+  var cmin = Math.min.apply(null, data.map(function (d) { return d.cu; })), cmax = Math.max.apply(null, data.map(function (d) { return d.cu; }));
+  var iBest = -1, iOpt = 0;
+  for (i = 0; i < xs.length; i++) {
+    if (xs[i] >= cmin && xs[i] <= cmax && (iBest < 0 || ei[i] > ei[iBest])) iBest = i;
+    if (dir < 0 ? mean[i] < mean[iOpt] : mean[i] > mean[iOpt]) iOpt = i;
+  }
+  if (iBest < 0) iBest = iOpt;
+  return { xs: xs, mean: mean, lo: lo, hi: hi, ei: ei, iNext: iBest, iOpt: iOpt, eiScale: ws };
+}
+
+/* ---------- LSV analysis ---------- */
+var REF_OFFSET = { ag: 0.197, sce: 0.241, hg: 0.098, rhe: 0 };
+
+function parseLSV(text) {
+  var rows = [];
+  String(text).split(/\r?\n/).forEach(function (line) {
+    line = line.trim();
+    if (!line) return;
+    var parts = (line.indexOf('\t') >= 0 || line.indexOf(';') >= 0)
+      ? line.split(/[\t;]+/).map(function (s) { return s.replace(',', '.'); })
+      : line.split(/[\s,]+/);
+    var a = parseFloat(parts[0]), b = parseFloat(parts[1]);
+    if (isFinite(a) && isFinite(b)) rows.push([a, b]);
+  });
+  return rows;
+}
+
+/* o: {ref, pH, unit:'j'|'i', area, ru, target, lo, hi} */
+function analyzeLSV(rows, o) {
+  if (rows.length < 5) return { ok: false, msg: 'Need at least 5 numeric rows (potential, current).' };
+  if (!(o.target > 0)) return { ok: false, msg: 'Target current density must be above zero.' };
+  if (o.unit === 'i' && !(o.area > 0)) return { ok: false, msg: 'Enter the electrode area to convert current to density.' };
+  var cur = rows.map(function (r) { return r[1]; }).sort(function (a, b) { return a - b; });
+  var sign = cur[Math.floor(cur.length / 2)] < 0 ? -1 : 1;
+  var area = o.area > 0 ? o.area : 1;
+  var pts = rows.map(function (r) {
+    var j = sign * r[1]; if (o.unit === 'i') j = j / area;
+    var E = r[0] + REF_OFFSET[o.ref] + (o.ref === 'rhe' ? 0 : 0.0591 * o.pH);
+    if (o.ru > 0) E -= (j * area / 1000) * o.ru;
+    return { E: E, j: j };
+  });
+  var imax = 0; pts.forEach(function (p, i) { if (p.E > pts[imax].E) imax = i; });
+  var fw = pts.slice(0, imax + 1);
+  var out = { ok: true, fw: fw, sign: sign, eta: null, eCross: null, tafel: null, r2: null, nfit: 0, fitPts: [], warn: [] };
+  var i, f;
+  for (i = 1; i < fw.length; i++) {
+    if (fw[i - 1].j < o.target && fw[i].j >= o.target) {
+      f = (o.target - fw[i - 1].j) / (fw[i].j - fw[i - 1].j);
+      out.eCross = fw[i - 1].E + f * (fw[i].E - fw[i - 1].E);
+      out.eta = (out.eCross - 1.23) * 1000;
+      break;
+    }
+  }
+  if (out.eta === null) out.warn.push('The forward sweep never crosses ' + o.target + ' mA/cm².');
+  else if (out.eta < 0 || out.eta > 1000) out.warn.push('Overpotential is outside 0 to 1000 mV. Check the reference electrode, pH and current units.');
+  var fp = fw.filter(function (p) { return p.j >= o.lo && p.j <= o.hi && p.j > 0; });
+  if (fp.length >= 3) {
+    var xs = fp.map(function (p) { return Math.log10(p.j); }), ys = fp.map(function (p) { return (p.E - 1.23) * 1000; });
+    var mx = xs.reduce(function (a, b) { return a + b; }, 0) / xs.length, my = ys.reduce(function (a, b) { return a + b; }, 0) / ys.length;
+    var sxx = 0, sxy = 0, syy = 0;
+    for (i = 0; i < xs.length; i++) { sxx += (xs[i] - mx) * (xs[i] - mx); sxy += (xs[i] - mx) * (ys[i] - my); syy += (ys[i] - my) * (ys[i] - my); }
+    if (sxx > 0.04) {
+      out.tafel = sxy / sxx; out.icpt = my - out.tafel * mx;
+      out.r2 = syy > 0 ? (sxy * sxy) / (sxx * syy) : 1; out.nfit = fp.length; out.fitPts = fp;
+    } else out.warn.push('The Tafel window spans less than 0.2 decades. Widen it.');
+  } else out.warn.push('Fewer than 3 points fall in the Tafel window. Widen it.');
+  return out;
+}
+
+function exampleLSV() {
+  var lines = ['E vs Ag/AgCl (V), j (mA/cm2)'], off = 0.197 + 0.0591 * 13, k, eta, j, E;
+  for (k = 0; k <= 200; k++) {
+    eta = 0.15 + k * 0.0015;
+    j = 10 * Math.pow(10, (eta * 1000 - 252) / 64.5) * (1 + 0.004 * Math.sin(k * 1.7));
+    if (j > 80) break;
+    E = 1.23 + eta - off;
+    lines.push(E.toFixed(4) + ', ' + j.toFixed(3));
+  }
+  return lines.join('\n');
+}
+/*UI*/
+var state = { metric: 'eta', ell: 12, noise: 10, data: {} };
+function loadPaper() {
+  Object.keys(PAPER).forEach(function (k) { state.data[k] = PAPER[k].map(function (p) { return { cu: p[0], y: p[1], src: 'paper' }; }); });
+}
+loadPaper();
+
+var $ = function (id) { return document.getElementById(id); };
+var plotEl = $('plot'), lastFit = null, hoverX = null;
+function fmt(v, d) { return Number(v).toFixed(d); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function fmtTick(t) { return String(parseFloat(Number(t).toPrecision(4))); }
+
+function niceTicks(lo, hi, count) {
+  var span = hi - lo || 1, raw = span / count, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  var m = raw / mag, step = (m < 1.5 ? 1 : m < 3 ? 2 : m < 7 ? 5 : 10) * mag, t = [], v = Math.ceil(lo / step) * step;
+  for (; v <= hi + 1e-9; v += step) t.push(v);
+  return t;
+}
+
+/* ---------- Plan tab ---------- */
+function render() {
+  var m = state.metric, M = META[m], data = state.data[m].slice().sort(function (a, b) { return a.cu - b.cu; });
+  $('ellv').textContent = state.ell + ' % Cu';
+  $('noisev').textContent = state.noise + ' % of spread';
+  $('nf').textContent = M.nf;
+  $('valhead').textContent = M.label + ' (' + M.unit + ')';
+  $('addlabel').textContent = M.label + ' (' + M.unit + ')';
+  $('addval').placeholder = 'e.g. ' + M.ph;
+
+  $('rows').innerHTML = data.map(function (d, i) {
+    return '<tr><td>' + fmt(d.cu, 1) + '</td><td>' + fmt(d.y, M.dec === 0 ? 1 : M.dec).replace(/\.0$/, '') + '</td><td class="src">' + (d.src === 'paper' ? 'Paper' : 'Added') +
+      '</td><td><button class="x" type="button" data-i="' + i + '" aria-label="Remove measurement at ' + fmt(d.cu, 1) + ' percent Cu">×</button></td></tr>';
+  }).join('');
+
+  var ni = noiseInfo(data), useRep = $('repnoise').checked && ni.fromReps;
+  var noise = useRep ? { mode: 'abs', v: ni.sd } : { mode: 'frac', v: state.noise / 100 };
+  $('noise').disabled = useRep;
+  $('noiseinfo').textContent = useRep
+    ? 'Noise in use: ' + fmt(ni.sd, 1) + ' ' + M.unit + ' from replicates (' + ni.dof + (ni.dof === 1 ? ' degree' : ' degrees') + ' of freedom).' + (ni.dof < 3 ? ' Too few repeats for a reliable estimate; add more.' : '')
+    : ($('repnoise').checked ? 'Noise in use: assumed, ' + state.noise + ' % of the data spread. Add repeat measurements at one Cu loading to estimate it from data.' : 'Noise in use: assumed, ' + state.noise + ' % of the data spread.');
+
+  var f = fit(data, M.dir, state.ell, noise);
+  lastFit = f;
+  if (!f) {
+    plotEl.innerHTML = '';
+    $('pick').innerHTML = '<h2>Next experiment</h2><div class="sub">Add at least one measurement to get a suggestion.</div>';
+    $('readout').textContent = '';
+    return;
+  }
+
+  var W = Math.max(plotEl.clientWidth, 280), H1 = 290, GAP = 34, H2 = 84, H = H1 + GAP + H2 + 46;
+  var ml = 54, mr = 12, mt = 12, pw = W - ml - mr;
+  var xmap = function (x) { return ml + (x - XMIN) / (XMAX - XMIN) * pw; };
+  var ymin = Infinity, ymax = -Infinity;
+  f.lo.forEach(function (v) { if (v < ymin) ymin = v; });
+  f.hi.forEach(function (v) { if (v > ymax) ymax = v; });
+  data.forEach(function (d) { ymin = Math.min(ymin, d.y); ymax = Math.max(ymax, d.y); });
+  var pad = (ymax - ymin) * 0.06; ymin -= pad; ymax += pad;
+  var ph1 = H1 - mt - 18;
+  var ymap = function (y) { return mt + (1 - (y - ymin) / (ymax - ymin)) * ph1; };
+  var top2 = H1 + GAP, eimax = Math.max.apply(null, f.ei) || 1e-9;
+  var emap = function (e) { return top2 + H2 - (e / eimax) * (H2 - 8); };
+
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="Fitted trend of ' + esc(M.label) + ' against Cu loading with 95 percent band and expected improvement">';
+  s += '<g class="axis">';
+  niceTicks(ymin, ymax, 5).forEach(function (t) {
+    s += '<line class="gridline" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + ymap(t) + '" y2="' + ymap(t) + '"/><text x="' + (ml - 8) + '" y="' + (ymap(t) + 4) + '" text-anchor="end">' + fmtTick(t) + '</text>';
+  });
+  [10, 20, 30, 40, 50, 60, 70].forEach(function (t) {
+    s += '<line class="gridline" x1="' + xmap(t) + '" x2="' + xmap(t) + '" y1="' + mt + '" y2="' + (mt + ph1) + '" style="opacity:.5"/>';
+    s += '<text x="' + xmap(t) + '" y="' + (top2 + H2 + 16) + '" text-anchor="middle">' + t + '</text>';
+  });
+  s += '<text x="12" y="' + (mt + ph1 / 2) + '" transform="rotate(-90 12 ' + (mt + ph1 / 2) + ')" text-anchor="middle">' + esc(M.label) + ' (' + esc(M.unit) + ')</text>';
+  s += '<text x="' + (ml + pw / 2) + '" y="' + (H - 4) + '" text-anchor="middle">Cu loading (mol %)</text>';
+  s += '<text x="' + (ml - 8) + '" y="' + (top2 + 8) + '" text-anchor="end">EI</text></g>';
+
+  var up = f.xs.map(function (x, i) { return xmap(x) + ',' + ymap(f.hi[i]); });
+  var dn = f.xs.map(function (x, i) { return xmap(x) + ',' + ymap(f.lo[i]); }).reverse();
+  s += '<polygon points="' + up.concat(dn).join(' ') + '" fill="var(--band)" opacity=".2"/>';
+  s += '<polyline fill="none" stroke="var(--band)" stroke-width="2" points="' + f.xs.map(function (x, i) { return xmap(x) + ',' + ymap(f.mean[i]); }).join(' ') + '"/>';
+
+  s += '<line class="gridline" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + (top2 + H2) + '" y2="' + (top2 + H2) + '"/>';
+  var area = 'M' + xmap(f.xs[0]) + ',' + (top2 + H2) + ' ' + f.xs.map(function (x, i) { return 'L' + xmap(x) + ',' + emap(f.ei[i]); }).join(' ') + ' L' + xmap(f.xs[f.xs.length - 1]) + ',' + (top2 + H2) + ' Z';
+  s += '<path d="' + area + '" fill="var(--cu)" opacity=".3"/>';
+  s += '<polyline fill="none" stroke="var(--cu)" stroke-width="1.5" points="' + f.xs.map(function (x, i) { return xmap(x) + ',' + emap(f.ei[i]); }).join(' ') + '"/>';
+
+  /* dim the regions outside the tested range: the model only reverts to its mean there */
+  var xa = xmap(data[0].cu), xb = xmap(data[data.length - 1].cu);
+  s += '<g fill="var(--panel)" opacity=".66"><rect x="' + ml + '" y="' + mt + '" width="' + Math.max(xa - ml, 0) + '" height="' + (top2 + H2 - mt) + '"/><rect x="' + xb + '" y="' + mt + '" width="' + Math.max(W - mr - xb, 0) + '" height="' + (top2 + H2 - mt) + '"/></g>';
+  if (xa - ml > 70) s += '<text class="lbl" x="' + (ml + 6) + '" y="' + (mt + ph1 - 6) + '">extrapolation</text>';
+  if (W - mr - xb > 70) s += '<text class="lbl" x="' + (W - mr - 6) + '" y="' + (mt + ph1 - 6) + '" text-anchor="end">extrapolation</text>';
+
+  var nx = f.xs[f.iNext], hasNext = f.ei[f.iNext] > 1e-3;
+  if (hasNext) {
+    s += '<line x1="' + xmap(nx) + '" x2="' + xmap(nx) + '" y1="' + mt + '" y2="' + (top2 + H2) + '" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="4 4"/>';
+    var anchor = xmap(nx) > W - 90 ? 'end' : 'start', lx = xmap(nx) + (anchor === 'end' ? -6 : 6);
+    s += '<text class="lbl" x="' + lx + '" y="' + (mt + 12) + '" text-anchor="' + anchor + '" style="fill:var(--ink)">next: ' + fmt(nx, 1) + ' %</text>';
+  }
+  if (hoverX !== null) {
+    s += '<line x1="' + xmap(hoverX) + '" x2="' + xmap(hoverX) + '" y1="' + mt + '" y2="' + (top2 + H2) + '" stroke="var(--muted)" stroke-width="1"/>';
+  }
+  /* replicate spread */
+  groupsOf(data).forEach(function (g) {
+    if (g.v.length < 2) return;
+    s += '<line x1="' + xmap(g.x) + '" x2="' + xmap(g.x) + '" y1="' + ymap(Math.min.apply(null, g.v)) + '" y2="' + ymap(Math.max.apply(null, g.v)) + '" stroke="var(--cu)" stroke-width="3" opacity=".45" stroke-linecap="round"/>';
+  });
+  data.forEach(function (d) {
+    if (d.src === 'paper') s += '<circle cx="' + xmap(d.cu) + '" cy="' + ymap(d.y) + '" r="5" fill="var(--cu)"/>';
+    else s += '<circle cx="' + xmap(d.cu) + '" cy="' + ymap(d.y) + '" r="5" fill="var(--panel)" stroke="var(--cu)" stroke-width="2"/>';
+  });
+  s += '</svg>';
+  plotEl.innerHTML = s;
+
+  var others = (100 - nx) / 4;
+  var pick = '<h2>Next experiment</h2>';
+  if (hasNext) {
+    pick += '<div class="big">' + fmt(nx, 1) + ' % Cu</div>';
+    pick += '<div class="sub">Predicted ' + esc(M.label.toLowerCase()) + ' ' + fmt(f.mean[f.iNext], M.dec) + ' ' + esc(M.unit) + ' (95% range ' + fmt(f.lo[f.iNext], M.dec) + ' to ' + fmt(f.hi[f.iNext], M.dec) + '). This is the loading between your tested points where a new run has the best chance to beat the current best.</div>';
+    pick += '<div class="comp">Co, Ni, Fe, Mn ≈ ' + fmt(others, 1) + ' % each</div>';
+  } else {
+    pick += '<div class="sub">The model sees little to gain from a new loading. Replicates at the current best would tell you more.</div>';
+  }
+  var opt = f.xs[f.iOpt];
+  pick += '<div class="sub" style="margin-top:12px">Trend optimum so far: ' + fmt(opt, 1) + ' % Cu (' + fmt(f.mean[f.iOpt], M.dec) + ' ' + esc(M.unit) + ').</div>';
+  $('pick').innerHTML = pick;
+
+  setReadout(hoverX);
+}
+
+function setReadout(x) {
+  var el = $('readout'), f = lastFit, M = META[state.metric];
+  if (!f) return;
+  if (x === null) { el.textContent = 'Move over the plot to read the trend at any Cu loading.'; return; }
+  var i = Math.round((x - XMIN) / STEP); i = Math.max(0, Math.min(f.xs.length - 1, i));
+  el.textContent = 'Cu ' + fmt(f.xs[i], 1) + ' %  →  ' + fmt(f.mean[i], M.dec) + ' ' + M.unit + '  (95% band ' + fmt(f.lo[i], M.dec) + ' to ' + fmt(f.hi[i], M.dec) + ')   EI ' + fmt(f.ei[i] * f.eiScale, M.dec === 0 ? 1 : 2) + ' ' + M.unit;
+}
+
+/* ---------- LSV tab ---------- */
+var lastLSV = null;
+function frame(W, H, xr, yr, xlab, ylab) {
+  var ml = 56, mr = 12, mt = 10, mb = 42, pw = W - ml - mr, ph = H - mt - mb;
+  var xm = function (x) { return ml + (x - xr[0]) / (xr[1] - xr[0]) * pw; };
+  var ym = function (y) { return mt + (1 - (y - yr[0]) / (yr[1] - yr[0])) * ph; };
+  var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-label="' + esc(ylab) + ' against ' + esc(xlab) + '"><g class="axis">';
+  niceTicks(yr[0], yr[1], 5).forEach(function (t) {
+    s += '<line class="gridline" x1="' + ml + '" x2="' + (W - mr) + '" y1="' + ym(t) + '" y2="' + ym(t) + '"/><text x="' + (ml - 8) + '" y="' + (ym(t) + 4) + '" text-anchor="end">' + fmtTick(t) + '</text>';
+  });
+  niceTicks(xr[0], xr[1], W < 420 ? 4 : 6).forEach(function (t) {
+    s += '<line class="gridline" style="opacity:.5" x1="' + xm(t) + '" x2="' + xm(t) + '" y1="' + mt + '" y2="' + (mt + ph) + '"/><text x="' + xm(t) + '" y="' + (H - mb + 16) + '" text-anchor="middle">' + fmtTick(t) + '</text>';
+  });
+  s += '<text x="' + (ml + pw / 2) + '" y="' + (H - 4) + '" text-anchor="middle">' + esc(xlab) + '</text>';
+  s += '<text x="12" y="' + (mt + ph / 2) + '" transform="rotate(-90 12 ' + (mt + ph / 2) + ')" text-anchor="middle">' + esc(ylab) + '</text></g>';
+  return { s: s, xm: xm, ym: ym, ml: ml, mr: mr, mt: mt, ph: ph, pw: pw };
+}
+
+function drawLSV(res, target) {
+  var a = $('lsvplot'), b = $('tafplot');
+  if (!res || !res.ok || !res.fw.length) { a.innerHTML = ''; b.innerHTML = ''; return; }
+  var W = Math.max(a.clientWidth, 260), H = 260, fw = res.fw, i;
+  var emin = Infinity, emax = -Infinity, jmax = 0;
+  fw.forEach(function (p) { emin = Math.min(emin, p.E); emax = Math.max(emax, p.E); jmax = Math.max(jmax, p.j); });
+  var padE = (emax - emin) * 0.04 || 0.01;
+  var fr = frame(W, H, [emin - padE, emax + padE], [0, jmax * 1.05 || 1], 'Potential (V vs RHE)', 'j (mA/cm²)');
+  var s = fr.s;
+  s += '<polyline fill="none" stroke="var(--band)" stroke-width="2" points="' + fw.map(function (p) { return fr.xm(p.E) + ',' + fr.ym(p.j); }).join(' ') + '"/>';
+  if (target <= jmax * 1.05) s += '<line x1="' + fr.ml + '" x2="' + (W - fr.mr) + '" y1="' + fr.ym(target) + '" y2="' + fr.ym(target) + '" stroke="var(--ink)" stroke-dasharray="4 4" opacity=".6"/>';
+  if (res.eCross !== null) {
+    s += '<circle cx="' + fr.xm(res.eCross) + '" cy="' + fr.ym(target) + '" r="5" fill="var(--cu)"/>';
+    var right = fr.xm(res.eCross) > W - 120;
+    s += '<text class="lbl" style="fill:var(--ink)" x="' + (fr.xm(res.eCross) + (right ? -10 : 10)) + '" y="' + (fr.ym(target) - 8) + '" text-anchor="' + (right ? 'end' : 'start') + '">η = ' + fmt(res.eta, 0) + ' mV</text>';
+  }
+  a.innerHTML = s + '</svg>';
+
+  var tp = fw.filter(function (p) { return p.j > 0.01; });
+  if (!tp.length) { b.innerHTML = ''; return; }
+  var xs = tp.map(function (p) { return Math.log10(p.j); }), ys = tp.map(function (p) { return (p.E - 1.23) * 1000; });
+  var xmn = Math.min.apply(null, xs), xmx = Math.max.apply(null, xs), ymn = Math.min.apply(null, ys), ymx = Math.max.apply(null, ys);
+  var px = (xmx - xmn) * 0.04 || 0.1, py = (ymx - ymn) * 0.06 || 10;
+  var fr2 = frame(W, H, [xmn - px, xmx + px], [ymn - py, ymx + py], 'log10 j (j in mA/cm²)', 'Overpotential (mV)');
+  var t = fr2.s;
+  tp.forEach(function (p, k) { t += '<circle cx="' + fr2.xm(xs[k]) + '" cy="' + fr2.ym(ys[k]) + '" r="2.6" fill="var(--muted)" opacity=".55"/>'; });
+  if (res.tafel !== null) {
+    res.fitPts.forEach(function (p) { t += '<circle cx="' + fr2.xm(Math.log10(p.j)) + '" cy="' + fr2.ym((p.E - 1.23) * 1000) + '" r="3.6" fill="var(--cu)"/>'; });
+    var x0 = Math.log10(res.fitPts[0].j), x1 = Math.log10(res.fitPts[res.fitPts.length - 1].j);
+    var lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+    t += '<line x1="' + fr2.xm(lo) + '" x2="' + fr2.xm(hi) + '" y1="' + fr2.ym(res.icpt + res.tafel * lo) + '" y2="' + fr2.ym(res.icpt + res.tafel * hi) + '" stroke="var(--cu)" stroke-width="2"/>';
+    t += '<text class="lbl" style="fill:var(--ink)" x="' + (fr2.ml + 8) + '" y="' + (fr2.mt + 14) + '">slope ' + fmt(res.tafel, 1) + ' mV/dec, R² ' + fmt(res.r2, 3) + '</text>';
+  }
+  b.innerHTML = t + '</svg>';
+}
+
+function readLSVOptions() {
+  var n = function (id, d) { var v = parseFloat($(id).value); return isFinite(v) ? v : d; };
+  return { ref: $('lsvref').value, pH: n('lsvph', NaN), unit: $('lsvunit').value, area: n('lsvarea', NaN), ru: n('lsvru', 0), target: n('lsvtarget', NaN), lo: n('lsvlo', NaN), hi: n('lsvhi', NaN) };
+}
+function runLSV() {
+  var msg = $('lsvmsg'), o = readLSVOptions(), rows = parseLSV($('lsvdata').value);
+  lastLSV = null; $('lsvres').innerHTML = ''; drawLSV(null);
+  if (!rows.length) { msg.textContent = 'Paste two columns of numbers first, or load the synthetic example.'; return; }
+  if (o.ref !== 'rhe' && !isFinite(o.pH)) { msg.textContent = 'Enter the electrolyte pH.'; return; }
+  if (!isFinite(o.lo) || !isFinite(o.hi) || o.lo >= o.hi) { msg.textContent = 'The Tafel window needs a lower value below the upper one.'; return; }
+  var res = analyzeLSV(rows, o);
+  if (!res.ok) { msg.textContent = res.msg; return; }
+  lastLSV = res;
+  var stat = function (k, v, u) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="u">' + u + '</div></div>'; };
+  $('lsvres').innerHTML =
+    stat('Overpotential', res.eta === null ? 'n/a' : fmt(res.eta, 0), res.eta === null ? 'target not reached' : 'mV at ' + o.target + ' mA/cm²') +
+    stat('Tafel slope', res.tafel === null ? 'n/a' : fmt(res.tafel, 1), res.tafel === null ? 'window not usable' : 'mV/dec, R² ' + fmt(res.r2, 3) + ', ' + res.nfit + ' points') +
+    stat('Points used', String(res.fw.length), 'of ' + rows.length + ' rows (forward sweep)');
+  msg.textContent = res.warn.join(' ') + (res.sign < 0 ? ' Current sign was flipped.' : '');
+  drawLSV(res, o.target);
+}
+
+/* ---------- events ---------- */
+function showTab(which) {
+  var plan = which === 'plan';
+  $('viewplan').hidden = !plan; $('viewlsv').hidden = plan;
+  $('tabplan').setAttribute('aria-selected', plan ? 'true' : 'false');
+  $('tablsv').setAttribute('aria-selected', plan ? 'false' : 'true');
+  if (plan) render(); else if (lastLSV) drawLSV(lastLSV, readLSVOptions().target);
+}
+$('tabplan').addEventListener('click', function () { showTab('plan'); });
+$('tablsv').addEventListener('click', function () { showTab('lsv'); });
+
+$('metric').addEventListener('change', function (e) { state.metric = e.target.value; $('msg').textContent = ''; render(); });
+$('ell').addEventListener('input', function (e) { state.ell = +e.target.value; render(); });
+$('noise').addEventListener('input', function (e) { state.noise = +e.target.value; render(); });
+$('repnoise').addEventListener('change', render);
+$('reset').addEventListener('click', function () { loadPaper(); $('msg').textContent = ''; render(); });
+$('rows').addEventListener('click', function (e) {
+  var b = e.target.closest('button[data-i]'); if (!b) return;
+  var sorted = state.data[state.metric].slice().sort(function (a, c) { return a.cu - c.cu; });
+  var target = sorted[+b.getAttribute('data-i')];
+  state.data[state.metric] = state.data[state.metric].filter(function (d) { return d !== target; });
+  render();
+});
+$('add').addEventListener('click', function () {
+  var cu = parseFloat($('addcu').value), y = parseFloat($('addval').value), msg = $('msg');
+  if (!isFinite(cu) || cu < XMIN || cu > XMAX) { msg.textContent = 'Enter a Cu loading between ' + XMIN + ' and ' + XMAX + ' %.'; return; }
+  if (!isFinite(y)) { msg.textContent = 'Enter the measured value.'; return; }
+  var rep = state.data[state.metric].some(function (d) { return Math.abs(d.cu - cu) < 0.25; });
+  state.data[state.metric].push({ cu: cu, y: y, src: 'added' });
+  $('addcu').value = ''; $('addval').value = '';
+  msg.textContent = rep ? 'Added as a replicate. Noise can now be estimated from the data.' : 'Added. The plan has been updated.';
+  render();
+});
+plotEl.addEventListener('pointermove', function (e) {
+  var r = plotEl.getBoundingClientRect(), W = r.width, ml = 54, mr = 12;
+  var x = XMIN + (e.clientX - r.left - ml) / (W - ml - mr) * (XMAX - XMIN);
+  hoverX = (x < XMIN || x > XMAX) ? null : Math.round(x / STEP) * STEP;
+  render();
+});
+plotEl.addEventListener('pointerleave', function () { hoverX = null; render(); });
+
+$('lsvgo').addEventListener('click', runLSV);
+$('lsvex').addEventListener('click', function () {
+  $('lsvdata').value = exampleLSV();
+  $('lsvref').value = 'ag'; $('lsvph').value = '13'; $('lsvunit').value = 'j'; $('lsvarea').value = '0.25'; $('lsvru').value = '0';
+  $('lsvtarget').value = '10'; $('lsvlo').value = '1'; $('lsvhi').value = '10';
+  runLSV();
+  $('lsvmsg').textContent = 'Synthetic curve built with η = 252 mV and a 64.5 mV/dec slope. These are the paper values for 40 % Cu, so the analyzer should return them. It is not measured data.';
+});
+$('lsvclr').addEventListener('click', function () { $('lsvdata').value = ''; $('lsvmsg').textContent = ''; $('lsvres').innerHTML = ''; lastLSV = null; drawLSV(null); });
+$('lsvadd').addEventListener('click', function () {
+  var msg = $('lsvmsg'), cu = parseFloat($('lsvcu').value);
+  if (!lastLSV || !lastLSV.ok) { msg.textContent = 'Analyze a curve first.'; return; }
+  if (!isFinite(cu) || cu < XMIN || cu > XMAX) { msg.textContent = 'Enter the Cu loading of this sample, between ' + XMIN + ' and ' + XMAX + ' %.'; return; }
+  var added = [];
+  if (lastLSV.eta !== null) { state.data.eta.push({ cu: cu, y: Math.round(lastLSV.eta * 10) / 10, src: 'added' }); added.push('overpotential'); }
+  if (lastLSV.tafel !== null) { state.data.tafel.push({ cu: cu, y: Math.round(lastLSV.tafel * 10) / 10, src: 'added' }); added.push('Tafel slope'); }
+  if (!added.length) { msg.textContent = 'Nothing to add: neither value could be determined.'; return; }
+  state.metric = 'eta'; $('metric').value = 'eta';
+  showTab('plan');
+  $('msg').textContent = 'Added ' + added.join(' and ') + ' for ' + fmt(cu, 1) + ' % Cu from the LSV analysis.';
+  render();
+});
+
+var lastW = 0;
+if (window.ResizeObserver) {
+  new ResizeObserver(function () { var w = plotEl.clientWidth; if (w && w !== lastW) { lastW = w; render(); } }).observe(plotEl);
+  var lw = 0;
+  new ResizeObserver(function () { var w = $('lsvplot').clientWidth; if (w && w !== lw) { lw = w; if (lastLSV) drawLSV(lastLSV, readLSVOptions().target); } }).observe($('lsvplot'));
+}
+render();
+</script>
+</body>
+</html>
