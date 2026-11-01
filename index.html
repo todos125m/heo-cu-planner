@@ -61,6 +61,9 @@ h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; margin: 0; font-we
   border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; margin-bottom: -1px; cursor: pointer; border-radius: 0;
 }
 .themebtn { margin-left: auto; align-self: center; margin-bottom: 4px; padding: 6px 12px; }
+.lit { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.lit a { color: var(--band); }
+.tag { font-size: 11px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cu); }
 .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 @media (min-width: 980px) { .grid { grid-template-columns: minmax(0, 1fr) 360px; align-items: start; } .grid.lsv { grid-template-columns: 340px minmax(0, 1fr); } }
@@ -149,6 +152,7 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
   <div class="tabs" role="tablist" aria-label="Tools">
     <button class="tab" id="tabplan" role="tab" aria-selected="true" aria-controls="viewplan" type="button">Plan</button>
     <button class="tab" id="tablsv" role="tab" aria-selected="false" aria-controls="viewlsv" type="button">Analyze LSV</button>
+    <button class="tab" id="tablit" role="tab" aria-selected="false" aria-controls="viewlit" type="button">Related papers</button>
     <button class="ghost themebtn" id="theme" type="button" aria-label="Switch between dark and light theme"></button>
   </div>
 
@@ -268,6 +272,43 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
         <p class="note" style="margin-top:8px">Adds the two values to the Plan tab as measurements for this Cu loading.</p>
       </section>
     </div>
+  </div>
+
+  <!-- ============ RELATED PAPERS ============ -->
+  <div class="col" id="viewlit" role="tabpanel" aria-labelledby="tablit" hidden>
+    <section class="card">
+      <h2>Same group (Shaabani, University of Tabriz)</h2>
+      <ul class="lit">
+        <li><b>Tailoring copper content in high-entropy oxides for enhanced water oxidation catalysis</b> · Sci. Rep. 2026 <span class="tag">source paper of this tool</span></li>
+        <li><a href="https://publications.hse.ru/en/articles/1165077871" target="_blank" rel="noopener">Synergistic multimetal effects in a high-entropy perovskite oxide anchored on rGO for accelerated water oxidation</a> · J. Phys. Chem. Lett. 17(13), 2026 <span class="tag">OER, perovskite</span></li>
+        <li>High-entropy (CoFeMnCuNiCr)₃O₄ nanoparticles anchored on graphene-based supports for oxygen evolution · ACS Appl. Energy Mater. 8(12), 2025 <span class="tag">OER, closest in composition</span></li>
+        <li>Electrocatalytic reduction of CO₂ to long-chain hydrocarbons on (FeCoNiCu)₃O₄ medium-entropy oxide · J. Phys. Chem. Lett. 16(17), 2025 <span class="tag">other reaction</span></li>
+        <li>Solvent-free aerobic oxidation of toluene on high-entropy (MnFeCuCoNi)₃O₄ on rGO · Ind. Eng. Chem. Res. 64(36), 2025 <span class="tag">other reaction</span></li>
+        <li>Comparative study of medium-entropy oxide and metal oxide nanoparticles on GO for benzyl alcohol oxidation · Mater. Adv. 7(2), 2026 <span class="tag">other reaction</span></li>
+      </ul>
+      <p class="note">Full list: <a href="https://scholar.google.com/citations?hl=en&amp;user=_vopA4EAAAAJ&amp;view_op=list_works&amp;sortby=pubdate" target="_blank" rel="noopener">Google Scholar profile of B. Shaabani</a>.</p>
+    </section>
+    <section class="card">
+      <h2>Cu-containing high-entropy spinels for OER (other groups)</h2>
+      <ul class="lit">
+        <li><a href="https://pubs.acs.org/doi/10.1021/acsaem.3c00311" target="_blank" rel="noopener">Phase-pure (Ni,Fe,Mn,Cu,Zn)₃O₄ via thermal plasma</a> · ACS Appl. Energy Mater. <span class="tag">one Cu fraction</span></li>
+        <li><a href="https://pubs.rsc.org/en/content/articlelanding/2019/ta/c9ta08740k" target="_blank" rel="noopener">Low-temperature route to high-entropy (Co,Cu,Fe,Mn,Ni)₃O₄</a> · J. Mater. Chem. A 2019 <span class="tag">powder, no nickel foam</span></li>
+        <li><a href="https://sciencedirect.com/science/article/abs/pii/S0272884222033375" target="_blank" rel="noopener">Formation mechanism of Cr-free spinel (MnFeCoNiCu)₃O₄</a> · Ceram. Int. <span class="tag">equimolar vs Cu 0.092</span></li>
+        <li><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC12842824/" target="_blank" rel="noopener">Binder-free spinel Co₂CuO₄ nanosheets on nickel foam, Cu-driven kinetics for alkaline OER</a> <span class="tag">Cu effect, simple spinel</span></li>
+        <li><a href="https://doi.org/10.3390/ma17143415" target="_blank" rel="noopener">Spinel-type (Co,Fe,Mn,Ni,Cr)₃O₄ for OER</a> · Materials 2024 <span class="tag">no Cu, reference system</span></li>
+        <li><a href="https://www.nature.com/articles/s41467-023-41359-7" target="_blank" rel="noopener">Synergistic effects of mixing and strain in high-entropy spinel oxides for OER</a> · Nat. Commun. 2023 <span class="tag">theory and experiment</span></li>
+      </ul>
+      <p class="note">A search found no paper that varies Cu across a series in this exact composition, so the Cu-loading series of the source paper looks unusual.</p>
+    </section>
+    <section class="card">
+      <h2>Planning method: choosing the next experiment</h2>
+      <ul class="lit">
+        <li><a href="https://arxiv.org/pdf/2305.12541" target="_blank" rel="noopener">Critical evaluation of a self-driving lab for electrodeposited mixed-metal oxide OER catalysts</a> · arXiv 2023 <span class="tag">Gaussian process, noise</span></li>
+        <li><a href="https://pubs.rsc.org/en/content/articlelanding/2024/ta/d3ta06651g" target="_blank" rel="noopener">Multiobjective Bayesian optimization of a Co–Mn–Sb–Sn–Ti oxide for acidic OER</a> · J. Mater. Chem. A 2024 <span class="tag">same idea as the Plan tab</span></li>
+        <li><a href="https://scholar.gist.ac.kr/bitstream/local/8928/2/Adv%20Funct%20Materials%20_%202025%20_%20Perumal%20_%20Active%20Learning%e2%80%90Driven%20Discovery%20of%20Sub%e2%80%902%20Nm%20High%e2%80%90Entropy%20Nan.pdf" target="_blank" rel="noopener">Active-learning-driven discovery of sub-2 nm high-entropy nanocatalysts</a> · Adv. Funct. Mater. 2025 <span class="tag">alkaline water splitting</span></li>
+      </ul>
+    </section>
+    <p class="note">Listed from titles and abstracts found by searching, not read in full. Check the numbers in each paper before comparing it with your own data: composition, support, electrolyte and iR correction differ between papers.</p>
   </div>
 
   <footer>
@@ -674,12 +715,14 @@ $('download').addEventListener('click', function () {
 
 /* ---------- events ---------- */
 function showTab(which) {
-  var plan = which === 'plan';
-  $('viewplan').hidden = !plan; $('viewlsv').hidden = plan;
+  var plan = which === 'plan', lsv = which === 'lsv';
+  $('viewplan').hidden = !plan; $('viewlsv').hidden = !lsv; $('viewlit').hidden = which !== 'lit';
   $('tabplan').setAttribute('aria-selected', plan ? 'true' : 'false');
-  $('tablsv').setAttribute('aria-selected', plan ? 'false' : 'true');
-  if (plan) render(); else if (lastLSV) drawLSV(lastLSV, readLSVOptions().target);
+  $('tablsv').setAttribute('aria-selected', lsv ? 'true' : 'false');
+  $('tablit').setAttribute('aria-selected', which === 'lit' ? 'true' : 'false');
+  if (plan) render(); else if (lsv && lastLSV) drawLSV(lastLSV, readLSVOptions().target);
 }
+$('tablit').addEventListener('click', function () { showTab('lit'); });
 $('tabplan').addEventListener('click', function () { showTab('plan'); });
 $('tablsv').addEventListener('click', function () { showTab('lsv'); });
 
