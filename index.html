@@ -149,6 +149,17 @@ button.x { background: transparent; color: var(--muted); border: 0; padding: 2px
   input[type="number"], select { font-size: 16px; padding: 10px; }
   #reset { width: 100%; padding: 12px; }
 }
+table.cmp { min-width: 760px; }
+.cmp td { font-family: var(--font-ui); font-size: 13px; vertical-align: top; }
+.cmp th { white-space: nowrap; }
+.cmp tr.srcrow td { background: var(--soft); }
+.cmp a { color: var(--band); }
+@media (max-width: 640px) {
+  .tablewrap.cmpwrap { overflow-x: auto; }
+  table.cmp { display: table; }
+  table.cmp thead { display: table-header-group; }
+  table.cmp tbody { display: table-row-group; }
+}
 footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex; flex-direction: column; gap: 6px; }
 @media (prefers-reduced-motion: no-preference) { button { transition: opacity .15s; } button:hover { opacity: .88; } }
 </style>
@@ -290,6 +301,23 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
 
   <!-- ============ RELATED PAPERS ============ -->
   <div class="col" id="viewlit" role="tabpanel" aria-labelledby="tablit" hidden>
+    <section class="card">
+      <h2>Same measurement, different conditions</h2>
+      <p class="note" style="margin-bottom:12px">Four papers on spinel oxides for OER were read in full and put beside the source paper. The comparison in Table S2 of the source paper covers only the Tafel slope. Numbers are as each paper states them. The conditions differ, so the overpotentials are not directly comparable.</p>
+      <div class="tablewrap cmpwrap">
+        <table class="cmp">
+          <thead><tr><th>Paper</th><th>Substrate</th><th>KOH</th><th>Scan rate</th><th>iR correction</th><th>η at 10 mA/cm² (mV)</th><th>Tafel (mV/dec)</th><th>Replicates</th><th>Cdl</th></tr></thead>
+          <tbody>
+            <tr class="srcrow"><td><a href="https://doi.org/10.1038/s41598-026-50442-0" target="_blank" rel="noopener">Source paper (2026)</a></td><td>nickel foam</td><td>0.1 M</td><td>50 mV/s</td><td>not stated</td><td>252</td><td>64.5</td><td>none</td><td>not reported</td></tr>
+            <tr><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11277610/" target="_blank" rel="noopener">Materials 2024, (Co,Fe,Mn,Ni,Cr)₃O₄</a></td><td>carbon paper</td><td>1 M</td><td>5 mV/s</td><td>not stated</td><td>366</td><td>76.4</td><td>not stated</td><td>3.42 mF/cm²</td></tr>
+            <tr><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC10517924/" target="_blank" rel="noopener">Nat. Commun. 2023, CoFeNiCrMn</a></td><td>FTO glass</td><td>1 M</td><td>10 mV/s*</td><td>90 %</td><td>~307</td><td>34.7</td><td>≥3 samples</td><td>roughness factor</td></tr>
+            <tr><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11209678/" target="_blank" rel="noopener">ACS Omega 2024, (AlCrCoNiFe₂)O</a></td><td>nickel foam</td><td>1 M</td><td>5 mV/s</td><td>100 %</td><td>230</td><td>29</td><td>not stated</td><td>not reported</td></tr>
+            <tr><td><a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12842824/" target="_blank" rel="noopener">Materials 2026, Co₂CuO₄</a></td><td>nickel foam</td><td>1 M</td><td>1 mV/s</td><td>yes, % not stated</td><td>268</td><td>44</td><td>independent electrodes, n not given</td><td>method only</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note" style="margin-top:10px">* From a summary of the full text, so less certain. Two RSC papers could not be opened and the supplements were not read. None of the four varies Cu in a series, so the Cu series of the source paper is the new part. The source paper reports no replicates, no iR statement and no double-layer capacitance, and it is the only one measured in 0.1 M KOH at 50 mV/s.</p>
+    </section>
     <section class="card">
       <h2>Same group (Shaabani, University of Tabriz)</h2>
       <ul class="lit">
@@ -1110,6 +1138,13 @@ var FA = {
   'Kinetic Tafel slope': 'شیب تافل سینتیکی', 'Fitted Tafel slope': 'شیب تافل برازش‌شده',
   'mV, paper value used as kinetics': 'mV، مقدار مقاله به‌عنوان سینتیک', 'mV/dec, paper value used as kinetics': 'mV/dec، مقدار مقاله به‌عنوان سینتیک', 'mV/dec, window 1 to 10 mA/cm²': 'mV/dec، پنجره‌ی 1 تا 10 mA/cm²',
   'From the paper: Rs of Table S3 (used as Ru) and an electrode area of 0.25 cm². The paper does not say whether iR correction was applied, so 0 % is the default. The capacitance is not in the paper. The CPE of Table S3 corresponds to about 1 µF, which looks small to me for nickel foam and is worth asking the authors; 5 mF/cm² is an assumption. The Tafel fit uses the reported curve between 1 and 10 mA/cm². The paper\'s η and Tafel slope are taken here as the kinetics of the sample. If they already contain the iR drop, the real kinetics are better than shown and the shifts above are overestimated.': 'از مقاله: Rs جدول S3 (به‌جای Ru) و مساحت الکترود 0.25 cm². مقاله نگفته که اصلاح iR انجام شده یا نه، پس پیش‌فرض 0 % است. ظرفیت در مقاله نیست. CPE جدول S3 حدود 1 µF می‌شود که به نظر من برای نیکل‌فوم کوچک است و بهتر است از نویسندگان پرسیده شود؛ 5 mF/cm² یک فرض است. برازش تافل از منحنی گزارش‌شده بین 1 و 10 mA/cm² انجام می‌شود. η و شیب تافل مقاله این‌جا سینتیک نمونه گرفته شده‌اند. اگر از قبل افت iR را در خود داشته باشند، سینتیک واقعی بهتر از آنچه نشان داده شده است و جابه‌جایی‌های بالا بیش از واقع برآورد شده‌اند.',
+  'Same measurement, different conditions': 'همین اندازه‌گیری، شرایط متفاوت',
+  'Four papers on spinel oxides for OER were read in full and put beside the source paper. The comparison in Table S2 of the source paper covers only the Tafel slope. Numbers are as each paper states them. The conditions differ, so the overpotentials are not directly comparable.': 'چهار مقاله درباره‌ی اکسیدهای اسپینلی برای OER کامل خوانده و کنار مقاله‌ی مبنا گذاشته شده‌اند. مقایسه‌ی Table S2 مقاله‌ی مبنا فقط شیب تافل را در بر می‌گیرد. عددها همان‌اند که هر مقاله گفته است. شرایط فرق دارد، پس اضافه‌ولتاژها را نمی‌شود مستقیم مقایسه کرد.',
+  'Substrate': 'بستر', 'iR correction': 'اصلاح iR', 'η at 10 mA/cm² (mV)': 'η در 10 mA/cm² (mV)', 'Tafel (mV/dec)': 'تافل (mV/dec)', 'Replicates': 'تکرار',
+  'Source paper (2026)': 'مقاله‌ی مبنا (2026)', 'nickel foam': 'نیکل‌فوم', 'carbon paper': 'کاغذ کربنی', 'FTO glass': 'شیشه‌ی FTO',
+  'not stated': 'ذکر نشده', 'none': 'ندارد', 'not reported': 'گزارش نشده', '≥3 samples': 'حداقل 3 نمونه', 'roughness factor': 'ضریب زبری',
+  'yes, % not stated': 'بله، درصد ذکر نشده', 'independent electrodes, n not given': 'الکترودهای مستقل، n نیامده', 'method only': 'فقط روش، بدون عدد',
+  '* From a summary of the full text, so less certain. Two RSC papers could not be opened and the supplements were not read. None of the four varies Cu in a series, so the Cu series of the source paper is the new part. The source paper reports no replicates, no iR statement and no double-layer capacitance, and it is the only one measured in 0.1 M KOH at 50 mV/s.': '* از روی خلاصه‌ی متن کامل است و کمتر قطعی است. دو مقاله‌ی RSC باز نشد و ضمیمه‌ها خوانده نشد. هیچ‌یک از این چهار مقاله Cu را در یک سری تغییر نداده‌اند، پس سری Cu مقاله‌ی مبنا بخش تازه است. مقاله‌ی مبنا تکرار، ذکر iR و ظرفیت لایه‌ی دوگانه ندارد و تنها مقاله‌ای است که در KOH 0.1 M و با 50 mV/s اندازه‌گیری شده.',
   '⬇ Download this tool (single HTML file, works offline)': '⬇ دانلود این ابزار (یک فایل HTML، آفلاین هم کار می‌کند)',
   'Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.': 'ابزار برنامه‌ریزی مستقل است و نویسندگان آن را نساخته‌اند و وابسته به آن‌ها نیست. با پنج اندازه‌گیری تکی، باند فقط راهنمای انتخاب آزمایش‌هاست و ادعایی درباره‌ی بهینه‌ی واقعی ندارد. تحلیل‌گر LSV روی یک منحنی ساختگی با پاسخ معلوم آزموده شده، نه روی داده‌ی آزمایشگاهی؛ پیش از تکیه بر آن، روی یک نمونه‌ی واقعی با روش معمول خودتان مقایسه کنید.',
   '570 mV overpotential': 'اضافه‌ولتاژ 570 mV',
