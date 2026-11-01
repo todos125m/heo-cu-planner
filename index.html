@@ -349,6 +349,25 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
     </section>
 
     <section class="card">
+      <h2>What the measurement does to the numbers</h2>
+      <p class="note" style="margin-bottom:12px">Physics model of one linear sweep through the kinetics of the chosen sample: j = 10 · 10^((E − E₁₀)/b) for the reaction, plus a capacitive current (capacitance × scan rate), plus the ohmic drop I · Ru, of which the chosen share is corrected. It answers: what would I read from this same sample with other settings? It does not predict a new sample.</p>
+      <div class="fields">
+        <label>Sample (Cu %)<select id="msample"><option>20</option><option>30</option><option selected>40</option><option>50</option><option>60</option></select></label>
+        <label>Scan rate <span class="val" id="mscanv"></span><input type="range" id="mscan" min="1" max="100" step="1" value="50"></label>
+        <label>Double-layer capacitance (assumed) <span class="val" id="mcdlv"></span><input type="range" id="mcdl" min="0" max="20" step="0.5" value="5"></label>
+        <label>Uncompensated resistance Ru <span class="val" id="mruv"></span><input type="range" id="mru" min="0" max="15" step="0.1" value="4.3"></label>
+        <label class="wide">iR correction applied <span class="val" id="mcompv"></span><input type="range" id="mcomp" min="0" max="100" step="5" value="0"></label>
+      </div>
+      <div class="results" id="mres" aria-live="polite" style="margin-top:14px"></div>
+      <div id="mplot"></div>
+      <div class="legend">
+        <span><i class="sw" style="background:var(--band)"></i>Reported curve (what you read)</span>
+        <span><i class="sw" style="background:var(--muted);opacity:.5"></i>Underlying kinetics of the sample</span>
+      </div>
+      <p class="note" style="margin-top:10px">From the paper: Rs of Table S3 (used as Ru) and an electrode area of 0.25 cm². The paper does not say whether iR correction was applied, so 0 % is the default. The capacitance is not in the paper. The CPE of Table S3 corresponds to about 1 µF, which looks small to me for nickel foam and is worth asking the authors; 5 mF/cm² is an assumption. The Tafel fit uses the reported curve between 1 and 10 mA/cm². The paper's η and Tafel slope are taken here as the kinetics of the sample. If they already contain the iR drop, the real kinetics are better than shown and the shifts above are overestimated.</p>
+    </section>
+
+    <section class="card">
       <h2>Configurational entropy against Cu</h2>
       <div id="simS"></div>
       <p class="noteinfo" id="simsinfo"></p>
@@ -851,8 +870,48 @@ function drawSimPower(delta, sd) {
   el.innerHTML = s + '</svg>';
   return { need: need, p3: pw[1] };
 }
+function measSim(p, o) {
+  var E10 = 1.23 + p.eta / 1000, jC = o.cdl * o.v / 1000, pts = [], E, jF, jt, I;
+  for (E = 1.28; E <= 1.85 + 1e-9; E += 0.0005) {
+    jF = 10 * Math.pow(10, (E - E10) * 1000 / p.b); jt = jF + jC; I = jt * o.area / 1000;
+    pts.push({ Et: E, jF: jF, jt: jt, Er: E + (1 - o.comp) * I * o.ru });
+  }
+  return pts;
+}
+function renderMeas() {
+  var p = simIdx($('msample').selectedIndex);
+  var o = { v: +$('mscan').value, cdl: +$('mcdl').value, ru: +$('mru').value, comp: +$('mcomp').value / 100, area: 0.25 };
+  $('mscanv').textContent = o.v + ' mV/s'; $('mcdlv').textContent = fmt(o.cdl, 1) + ' mF/cm²'; $('mruv').textContent = fmt(o.ru, 1) + ' Ω'; $('mcompv').textContent = Math.round(o.comp * 100) + ' %';
+  var pts = measSim(p, o), eta = null, xs = [], ys = [], i, f, slope = null;
+  for (i = 1; i < pts.length; i++) if (pts[i - 1].jt < 10 && pts[i].jt >= 10) { f = (10 - pts[i - 1].jt) / (pts[i].jt - pts[i - 1].jt); eta = (pts[i - 1].Er + f * (pts[i].Er - pts[i - 1].Er) - 1.23) * 1000; break; }
+  pts.forEach(function (q) { if (q.jt >= 1 && q.jt <= 10) { xs.push(Math.log10(q.jt)); ys.push((q.Er - 1.23) * 1000); } });
+  if (xs.length >= 3) {
+    var mx = xs.reduce(function (a, b) { return a + b; }, 0) / xs.length, my = ys.reduce(function (a, b) { return a + b; }, 0) / ys.length, sxx = 0, sxy = 0;
+    for (i = 0; i < xs.length; i++) { sxx += (xs[i] - mx) * (xs[i] - mx); sxy += (xs[i] - mx) * (ys[i] - my); }
+    if (sxx > 0.02) slope = sxy / sxx;
+  }
+  var stat = function (k, v, u) { return '<div class="stat"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="u">' + u + '</div></div>'; };
+  var shift = eta === null ? null : eta - p.eta, sg = shift !== null && shift < 0 ? '-' : '+';
+  $('mres').innerHTML =
+    stat('Kinetic η at 10 mA/cm²', fmt(p.eta, 0), 'mV, paper value used as kinetics') +
+    stat('Reported η at 10 mA/cm²', eta === null ? 'n/a' : fmt(eta, 0), eta === null ? 'target not reached' : 'mV, shifted by ' + sg + fmt(Math.abs(shift), 1) + ' mV') +
+    stat('Kinetic Tafel slope', fmt(p.b, 1), 'mV/dec, paper value used as kinetics') +
+    stat('Fitted Tafel slope', slope === null ? 'n/a' : fmt(slope, 1), slope === null ? 'window not usable' : 'mV/dec, window 1 to 10 mA/cm²');
+  var el = $('mplot'), W = Math.max(el.clientWidth, 260), H = 280, xr = [1.40, 1.85], yr = [0, 40];
+  var fr = frame(W, H, xr, yr, 'Potential (V vs RHE)', 'j (mA/cm²)'), s = fr.s;
+  var path = function (key, xk) { var a = [], q, j, k; for (k = 0; k < pts.length; k++) { q = pts[k]; if (q[xk] < xr[0]) continue; if (q[xk] > xr[1]) break; j = q[key]; if (j > yr[1]) { a.push(fr.xm(q[xk]) + ',' + fr.ym(yr[1])); break; } a.push(fr.xm(q[xk]) + ',' + fr.ym(j)); } return a.join(' '); };
+  s += '<line x1="' + fr.ml + '" x2="' + (W - fr.mr) + '" y1="' + fr.ym(10) + '" y2="' + fr.ym(10) + '" stroke="var(--ink)" stroke-dasharray="4 4" opacity=".5"/>';
+  s += '<polyline fill="none" stroke="var(--muted)" stroke-width="1.8" opacity=".6" points="' + path('jF', 'Et') + '"/>';
+  s += '<polyline fill="none" stroke="var(--band)" stroke-width="2.6" points="' + path('jt', 'Er') + '"/>';
+  if (eta !== null) s += '<circle cx="' + fr.xm(1.23 + eta / 1000) + '" cy="' + fr.ym(10) + '" r="5" fill="var(--cu)"/>';
+  el.innerHTML = s + '</svg>';
+}
+['msample', 'mscan', 'mcdl', 'mru', 'mcomp'].forEach(function (id) { $(id).addEventListener('input', renderSim); $(id).addEventListener('change', renderSim); });
+$('msample').addEventListener('change', function () { $('mru').value = SIM.rs[$('msample').selectedIndex]; renderSim(); });
+
 function renderSim() {
   if ($('viewsim').hidden) return;
+  renderMeas();
   var cu = parseFloat($('simcu').value), p = simAt(cu), sd = parseFloat($('repsd').value);
   $('simcuv').textContent = fmt(cu, 1) + ' %';
   $('repsdv').textContent = sd + ' mV';
@@ -1042,6 +1101,15 @@ var FA = {
   'Run-to-run spread of the overpotential (SD)': 'پراکندگی اضافه‌ولتاژ بین تکرارها (SD)',
   'Electrodes per loading, n': 'الکترود برای هر بارگذاری، n', 'Chance of a significant difference': 'احتمال دیدن تفاوت معنادار',
   'Monte Carlo, 2000 simulated experiments per point: n electrodes per loading, equal-variance two-sided t-test at 5 %. The spread is your assumption. A round robin of the rotating-disk method found about 50 mV between laboratories for the same catalyst at 10 mA/cm², and less inside one laboratory, so measure your own by repeating one electrode.': 'مونت‌کارلو، 2000 آزمایش شبیه‌سازی‌شده در هر نقطه: n الکترود برای هر بارگذاری، آزمون t دوطرفه با واریانس برابر در سطح 5 %. پراکندگی فرض شماست. یک مقایسه‌ی بین‌آزمایشگاهی روش الکترود دیسک چرخان برای یک کاتالیزور در 10 mA/cm² حدود 50 mV اختلاف بین آزمایشگاه‌ها یافته و درون یک آزمایشگاه کمتر بوده است؛ پس پراکندگی خودتان را با تکرار یک الکترود بسنجید.',
+  'What the measurement does to the numbers': 'اندازه‌گیری با عددها چه می‌کند',
+  'Physics model of one linear sweep through the kinetics of the chosen sample: j = 10 · 10^((E − E₁₀)/b) for the reaction, plus a capacitive current (capacitance × scan rate), plus the ohmic drop I · Ru, of which the chosen share is corrected. It answers: what would I read from this same sample with other settings? It does not predict a new sample.': 'مدل فیزیکی یک روبش خطی بر پایه‌ی سینتیک نمونه‌ی انتخابی: j = 10 · 10^((E − E₁₀)/b) برای واکنش، به‌اضافه‌ی جریان خازنی (ظرفیت × سرعت اسکن)، به‌اضافه‌ی افت اهمی I · Ru که سهم انتخاب‌شده‌ی آن اصلاح می‌شود. به این پرسش جواب می‌دهد: با تنظیم‌های دیگر از همین نمونه چه عددی می‌خواندم؟ نمونه‌ی تازه را پیش‌بینی نمی‌کند.',
+  'Sample (Cu %)': 'نمونه (Cu %)', 'Scan rate': 'سرعت اسکن', 'Double-layer capacitance (assumed)': 'ظرفیت لایه‌ی دوگانه (فرضی)',
+  'Uncompensated resistance Ru': 'مقاومت جبران‌نشده‌ی Ru', 'iR correction applied': 'درصد اصلاح iR',
+  'Reported curve (what you read)': 'منحنی گزارش‌شده (آنچه می‌خوانید)', 'Underlying kinetics of the sample': 'سینتیک واقعی نمونه',
+  'Kinetic η at 10 mA/cm²': 'η سینتیکی در 10 mA/cm²', 'Reported η at 10 mA/cm²': 'η گزارش‌شده در 10 mA/cm²',
+  'Kinetic Tafel slope': 'شیب تافل سینتیکی', 'Fitted Tafel slope': 'شیب تافل برازش‌شده',
+  'mV, paper value used as kinetics': 'mV، مقدار مقاله به‌عنوان سینتیک', 'mV/dec, paper value used as kinetics': 'mV/dec، مقدار مقاله به‌عنوان سینتیک', 'mV/dec, window 1 to 10 mA/cm²': 'mV/dec، پنجره‌ی 1 تا 10 mA/cm²',
+  'From the paper: Rs of Table S3 (used as Ru) and an electrode area of 0.25 cm². The paper does not say whether iR correction was applied, so 0 % is the default. The capacitance is not in the paper. The CPE of Table S3 corresponds to about 1 µF, which looks small to me for nickel foam and is worth asking the authors; 5 mF/cm² is an assumption. The Tafel fit uses the reported curve between 1 and 10 mA/cm². The paper\'s η and Tafel slope are taken here as the kinetics of the sample. If they already contain the iR drop, the real kinetics are better than shown and the shifts above are overestimated.': 'از مقاله: Rs جدول S3 (به‌جای Ru) و مساحت الکترود 0.25 cm². مقاله نگفته که اصلاح iR انجام شده یا نه، پس پیش‌فرض 0 % است. ظرفیت در مقاله نیست. CPE جدول S3 حدود 1 µF می‌شود که به نظر من برای نیکل‌فوم کوچک است و بهتر است از نویسندگان پرسیده شود؛ 5 mF/cm² یک فرض است. برازش تافل از منحنی گزارش‌شده بین 1 و 10 mA/cm² انجام می‌شود. η و شیب تافل مقاله این‌جا سینتیک نمونه گرفته شده‌اند. اگر از قبل افت iR را در خود داشته باشند، سینتیک واقعی بهتر از آنچه نشان داده شده است و جابه‌جایی‌های بالا بیش از واقع برآورد شده‌اند.',
   '⬇ Download this tool (single HTML file, works offline)': '⬇ دانلود این ابزار (یک فایل HTML، آفلاین هم کار می‌کند)',
   'Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.': 'ابزار برنامه‌ریزی مستقل است و نویسندگان آن را نساخته‌اند و وابسته به آن‌ها نیست. با پنج اندازه‌گیری تکی، باند فقط راهنمای انتخاب آزمایش‌هاست و ادعایی درباره‌ی بهینه‌ی واقعی ندارد. تحلیل‌گر LSV روی یک منحنی ساختگی با پاسخ معلوم آزموده شده، نه روی داده‌ی آزمایشگاهی؛ پیش از تکیه بر آن، روی یک نمونه‌ی واقعی با روش معمول خودتان مقایسه کنید.',
   '570 mV overpotential': 'اضافه‌ولتاژ 570 mV',
@@ -1098,6 +1166,7 @@ var FA_RX = [
   [/^of (\d+) rows \(forward sweep\)$/, 'از $1 ردیف (روبش رفت)'],
   [/^slope ([\d.]+) mV\/dec, R² ([\d.]+)$/, 'شیب $1 mV/dec، R² $2'],
   [/^Ω, Rs ([\d.]+) Ω$/, 'Ω، Rs $1 Ω'],
+  [/^mV, shifted by ([+-][\d.]+) mV$/, 'mV، با جابه‌جایی $1 mV'],
   [/^At ([\d.]+) % Cu: ΔS = ([\d.]+) R\.$/, 'در $1 % Cu: ΔS = $2 R.'],
   [/^Difference in η between (\d+) % and (\d+) % Cu: (\d+) mV, assumed spread (\d+) mV per electrode\.$/, 'تفاوت η بین $1 % و $2 % Cu: $3 mV، با پراکندگی فرضی $4 mV برای هر الکترود.'],
   [/^About (\d+) electrodes per loading give an 80 % chance of seeing it\.$/, 'حدود $1 الکترود برای هر بارگذاری شانس 80 % برای دیدن آن می‌دهد.'],
