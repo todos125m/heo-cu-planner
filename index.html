@@ -11,6 +11,7 @@
   var t = 'dark';
   try { var s = localStorage.getItem('heo-theme'); if (s === 'light' || s === 'dark') t = s; } catch (e) {}
   document.documentElement.setAttribute('data-theme', t);
+  try { if (localStorage.getItem('heo-lang') === 'fa') { document.documentElement.lang = 'fa'; document.documentElement.dir = 'rtl'; } } catch (e) {}
 })();
 </script>
 <style>
@@ -60,8 +61,17 @@ h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.1; margin: 0; font-we
   font: inherit; font-weight: 600; font-size: 14px; color: var(--muted); background: transparent;
   border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; margin-bottom: -1px; cursor: pointer; border-radius: 0;
 }
-.themebtn { margin-left: auto; align-self: center; margin-bottom: 4px; padding: 6px 12px; }
-.lit { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.themebtn { margin-inline-start: auto; align-self: center; margin-bottom: 4px; padding: 6px 12px; }
+.tbtn { align-self: center; margin-bottom: 4px; padding: 6px 12px; }
+#plot, #lsvplot, #tafplot, #simlsv, #simnyq, #simS, #simpow, textarea { direction: ltr; }
+textarea { text-align: left; }
+html[dir="rtl"] * { letter-spacing: 0 !important; }
+.val { direction: ltr; display: inline-block; }
+input[type="range"] { direction: ltr; }
+html[dir="rtl"] .eyebrow, html[dir="rtl"] h2, html[dir="rtl"] .stat .k { text-transform: none; }
+html[dir="rtl"] body { font-family: Tahoma, "Segoe UI", "Noto Sans Arabic", system-ui, sans-serif; }
+html[dir="rtl"] .val, html[dir="rtl"] .noteinfo, html[dir="rtl"] .readout { font-family: Tahoma, "Segoe UI", system-ui, sans-serif; }
+.lit { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
 .lit a { color: var(--band); }
 .tag { font-size: 11px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--cu); }
@@ -90,7 +100,7 @@ input[type="checkbox"] { accent-color: var(--cu); width: 16px; height: 16px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-top: 10px; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .sw { width: 12px; height: 12px; display: inline-block; }
-.pick { border-left: 3px solid var(--cu); padding-left: 14px; }
+.pick { border-inline-start: 3px solid var(--cu); padding-inline-start: 14px; }
 .pick .big { font-size: 2rem; line-height: 1.1; font-weight: 700; font-family: var(--font-data); letter-spacing: -0.02em; }
 .pick .sub { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
 .pick .comp { font-family: var(--font-data); font-size: 12.5px; margin-top: 8px; color: var(--ink); }
@@ -98,7 +108,7 @@ input[type="checkbox"] { accent-color: var(--cu); width: 16px; height: 16px; }
 .noteinfo { font-family: var(--font-data); font-size: 12.5px; color: var(--ink); margin: 10px 0 0; }
 .tablewrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+th { text-align: start; font-weight: 600; color: var(--muted); font-size: 12px; padding: 4px 6px; border-bottom: 1px solid var(--line); }
 td { padding: 5px 6px; border-bottom: 1px solid var(--soft); font-family: var(--font-data); }
 td.src { font-family: var(--font-ui); font-size: 12px; color: var(--muted); }
 button {
@@ -154,7 +164,8 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
     <button class="tab" id="tablsv" role="tab" aria-selected="false" aria-controls="viewlsv" type="button">Analyze LSV</button>
     <button class="tab" id="tablit" role="tab" aria-selected="false" aria-controls="viewlit" type="button">Related papers</button>
     <button class="tab" id="tabsim" role="tab" aria-selected="false" aria-controls="viewsim" type="button">Simulate</button>
-    <button class="ghost themebtn" id="theme" type="button" aria-label="Switch between dark and light theme"></button>
+    <button class="ghost themebtn" id="lang" type="button" aria-label="Language">فارسی</button>
+    <button class="ghost tbtn" id="theme" type="button" aria-label="Switch between dark and light theme"></button>
   </div>
 
   <!-- ============ PLAN ============ -->
@@ -359,7 +370,7 @@ footer { font-size: 12.5px; color: var(--muted); max-width: 84ch; display: flex;
 
   <footer>
     <div><button class="ghost" id="download" type="button">⬇ Download this tool (single HTML file, works offline)</button></div>
-    <div>Paper data: Mehrabi-Kalajahi et al., <em>Scientific Reports</em> 16, 20035 (2026), values read from the article text. Bare nickel foam reference: <span id="nf"></span>.</div>
+    <div id="paperline">Paper data: Mehrabi-Kalajahi et al., <em>Scientific Reports</em> 16, 20035 (2026), values read from the article text. Bare nickel foam reference: <span id="nf"></span>.</div>
     <div>Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.</div>
   </footer>
 </div>
@@ -958,6 +969,214 @@ if (window.ResizeObserver) {
   new ResizeObserver(function () { var w = $('lsvplot').clientWidth; if (w && w !== lw) { lw = w; if (lastLSV) drawLSV(lastLSV, readLSVOptions().target); } }).observe($('lsvplot'));
 }
 render();
+
+/* ---------- language: English / Persian ---------- */
+/* Static text is looked up exactly; text built by the code above is matched by the patterns below. Titles of papers stay in English. */
+var LANG = document.documentElement.lang === 'fa' ? 'fa' : 'en';
+var FA = {
+  'Cu-modified spinel HEO · OER on nickel foam': 'HEO اسپینلی اصلاح‌شده با Cu · OER روی نیکل‌فوم',
+  'HEO-Cu Experiment Planner': 'برنامه‌ریز آزمایش HEO-Cu',
+  'Two tools for the Cu-loading series. Analyze LSV turns a raw voltammogram into overpotential and Tafel slope. Plan fits a trend with its uncertainty through the measurements and proposes the next Cu loading to run. It starts from the five values in the paper.': 'دو ابزار برای سری بارگذاری Cu. «تحلیل LSV» ولتاموگرام خام را به اضافه‌ولتاژ و شیب تافل تبدیل می‌کند. «برنامه» یک روند همراه با عدم‌قطعیتش را از میان اندازه‌گیری‌ها می‌گذراند و بارگذاری Cu بعدی را پیشنهاد می‌دهد. کار با پنج مقدار مقاله شروع می‌شود.',
+  'Plan': 'برنامه', 'Analyze LSV': 'تحلیل LSV', 'Related papers': 'مقاله‌های مرتبط', 'Simulate': 'شبیه‌سازی',
+  '☀ Light': '☀ روشن', '☾ Dark': '☾ تیره',
+  'Tools': 'ابزارها', 'Language': 'زبان', 'Switch between dark and light theme': 'جابه‌جایی بین تم تیره و روشن',
+  'Trend and next experiment': 'روند و آزمایش بعدی', 'LSV input': 'ورودی LSV',
+  'Metric': 'معیار',
+  'Overpotential at 10 mA/cm² (mV)': 'اضافه‌ولتاژ در 10 mA/cm² (mV)',
+  'Tafel slope (mV/dec)': 'شیب تافل (mV/dec)',
+  'Charge-transfer resistance (Ω)': 'مقاومت انتقال بار (Ω)',
+  'Steady current, 36,000 s (mA/cm²)': 'جریان پایدار، 36,000 ثانیه (mA/cm²)',
+  'Overpotential (mV)': 'اضافه‌ولتاژ (mV)',
+  'Steady current (mA/cm²)': 'جریان پایدار (mA/cm²)',
+  'Cu loading (mol %)': 'بارگذاری Cu (درصد مولی)',
+  'extrapolation': 'برون‌یابی',
+  'Move over the plot to read the trend at any Cu loading.': 'اشاره‌گر را روی نمودار ببرید تا روند را در هر بارگذاری Cu بخوانید.',
+  'Paper value': 'مقدار مقاله', 'Added by you': 'افزوده‌ی شما', '95% band of the trend': 'باند 95% روند', 'Expected improvement': 'بهبود مورد انتظار',
+  'Next experiment': 'آزمایش بعدی',
+  'Add at least one measurement to get a suggestion.': 'برای گرفتن پیشنهاد دست‌کم یک اندازه‌گیری اضافه کنید.',
+  'The model sees little to gain from a new loading. Replicates at the current best would tell you more.': 'مدل از یک بارگذاری تازه سود چندانی نمی‌بیند. تکرار در بهترین نمونه‌ی فعلی اطلاعات بیشتری می‌دهد.',
+  'Model settings': 'تنظیمات مدل',
+  'Smoothness: correlation length': 'همواری: طول همبستگی',
+  'Assumed measurement noise': 'نویز اندازه‌گیری فرضی',
+  'Estimate noise from replicates when available': 'در صورت وجود تکرار، نویز را از تکرارها برآورد کن',
+  'The paper reports one sample per loading and no error bars, so the noise is assumed until replicates are entered. Raise it if you expect poor reproducibility; the band widens and the plan favors repeating runs.': 'مقاله برای هر بارگذاری یک نمونه گزارش کرده و میله‌ی خطا ندارد؛ پس تا وقتی تکرار وارد نشود نویز فرضی است. اگر انتظار تکرارپذیری ضعیف دارید آن را بالا ببرید؛ باند پهن‌تر می‌شود و برنامه تکرار آزمایش را ترجیح می‌دهد.',
+  'Measurements': 'اندازه‌گیری‌ها', 'Source': 'منبع', 'Paper': 'مقاله', 'Added': 'افزوده',
+  'Cu loading (%)': 'بارگذاری Cu (%)', 'Add': 'افزودن',
+  'Enter the same Cu loading more than once to record replicates.': 'برای ثبت تکرار، همان بارگذاری Cu را بیش از یک بار وارد کنید.',
+  'Reset to paper values': 'بازگشت به مقادیر مقاله',
+  'Linear sweep data': 'داده‌ی روبش خطی',
+  'Paste two columns: potential (V) and current. Header lines are ignored.': 'دو ستون را بچسبانید: پتانسیل (V) و جریان. خط‌های سرآیند نادیده گرفته می‌شوند.',
+  'Reference electrode': 'الکترود مرجع',
+  'Ag/AgCl (sat. KCl), +0.197 V': 'Ag/AgCl (KCl اشباع)، +0.197 V', 'SCE, +0.241 V': 'SCE، +0.241 V', 'Hg/HgO (1 M KOH), +0.098 V': 'Hg/HgO (KOH یک مولار)، +0.098 V', 'Already vs RHE': 'از قبل نسبت به RHE',
+  'Electrolyte pH': 'pH الکترولیت', 'Current column is': 'ستون جریان', 'Current density (mA/cm²)': 'چگالی جریان (mA/cm²)', 'Current (mA)': 'جریان (mA)',
+  'Electrode area (cm²)': 'مساحت الکترود (cm²)', 'Series resistance Ru (Ω), optional': 'مقاومت سری Ru (Ω)، اختیاری', 'Target density (mA/cm²)': 'چگالی هدف (mA/cm²)',
+  'Tafel fit from (mA/cm²)': 'برازش تافل از (mA/cm²)', 'Tafel fit to (mA/cm²)': 'برازش تافل تا (mA/cm²)',
+  'Analyze': 'تحلیل', 'Load synthetic example': 'بارگذاری نمونه‌ی ساختگی', 'Clear': 'پاک کردن',
+  'Potentials convert as E(RHE) = E(ref) + E°(ref) + 0.0591 × pH at 25 °C. Overpotential is E(RHE) − 1.23 V. Only the forward sweep up to the highest potential is used. If most currents are negative the sign is flipped.': 'پتانسیل‌ها چنین تبدیل می‌شوند: E(RHE) = E(ref) + E°(ref) + 0.0591 × pH در 25 °C. اضافه‌ولتاژ برابر E(RHE) − 1.23 V است. فقط روبش رفت تا بیشترین پتانسیل به کار می‌رود. اگر بیشتر جریان‌ها منفی باشند علامت برعکس می‌شود.',
+  'Result': 'نتیجه', 'Polarization curve': 'منحنی قطبش', 'Tafel plot': 'نمودار تافل', 'Send to the planner': 'ارسال به برنامه‌ریز',
+  'Cu loading of this sample (%)': 'بارگذاری Cu این نمونه (%)', 'Add overpotential and Tafel': 'افزودن اضافه‌ولتاژ و تافل',
+  'Adds the two values to the Plan tab as measurements for this Cu loading.': 'این دو مقدار را به‌عنوان اندازه‌گیری این بارگذاری Cu به تب برنامه اضافه می‌کند.',
+  'Same group (Shaabani, University of Tabriz)': 'همان گروه (شعبانی، دانشگاه تبریز)',
+  'source paper of this tool': 'مقاله‌ی مبنای این ابزار', 'OER, perovskite': 'OER، پروسکایت', 'OER, closest in composition': 'OER، نزدیک‌ترین ترکیب', 'other reaction': 'واکنش دیگر',
+  'Full list:': 'فهرست کامل:', 'Google Scholar profile of B. Shaabani': 'پروفایل Google Scholar ب. شعبانی',
+  'Cu-containing high-entropy spinels for OER (other groups)': 'اسپینل‌های پرآنتروپی حاوی Cu برای OER (گروه‌های دیگر)',
+  'one Cu fraction': 'یک کسر Cu', 'powder, no nickel foam': 'پودر، بدون نیکل‌فوم', 'equimolar vs Cu 0.092': 'هم‌مول در برابر Cu برابر 0.092', 'Cu effect, simple spinel': 'اثر Cu، اسپینل ساده',
+  'no Cu, reference system': 'بدون Cu، سامانه‌ی مرجع', 'theory and experiment': 'نظریه و آزمایش',
+  'A search found no paper that varies Cu across a series in this exact composition, so the Cu-loading series of the source paper looks unusual.': 'در جستجو مقاله‌ای پیدا نشد که Cu را در یک سری با همین ترکیب تغییر داده باشد؛ پس سری بارگذاری Cu در مقاله‌ی مبنا نادر به نظر می‌رسد.',
+  'Planning method: choosing the next experiment': 'روش برنامه‌ریزی: انتخاب آزمایش بعدی',
+  'Gaussian process, noise': 'فرایند گاوسی، نویز', 'same idea as the Plan tab': 'همان ایده‌ی تب برنامه', 'alkaline water splitting': 'آب‌شکافی قلیایی',
+  'Listed from titles and abstracts found by searching, not read in full. Check the numbers in each paper before comparing it with your own data: composition, support, electrolyte and iR correction differ between papers.': 'از روی عنوان و چکیده‌هایی که جستجو یافت فهرست شده‌اند و کامل خوانده نشده‌اند. پیش از مقایسه با داده‌ی خودتان، اعداد هر مقاله را بررسی کنید: ترکیب، بستر، الکترولیت و تصحیح iR بین مقاله‌ها فرق دارد.',
+  'Virtual experiment': 'آزمایش مجازی',
+  'An illustration built from the five single measurements of the source paper (overpotential, Tafel slope and Table S3 impedance fits), joined by straight lines between neighbouring Cu loadings. It is not a prediction of what a new sample would give.': 'تصویری ساخته‌شده از پنج اندازه‌گیری تکی مقاله‌ی مبنا (اضافه‌ولتاژ، شیب تافل و برازش‌های امپدانس جدول S3) که بین بارگذاری‌های Cu مجاور با خط راست به هم وصل شده‌اند. پیش‌بینی نتیجه‌ی یک نمونه‌ی تازه نیست.',
+  'Cu loading': 'بارگذاری Cu', 'η at 10 mA/cm²': 'η در 10 mA/cm²', 'Tafel slope': 'شیب تافل', 'nominal composition': 'ترکیب اسمی',
+  'Polarization curve (kinetic model)': 'منحنی قطبش (مدل سینتیکی)', 'Potential (V vs RHE)': 'پتانسیل (V نسبت به RHE)',
+  'Nyquist plot (Rs + Rct ∥ CPE)': 'نمودار نایکویست (Rs + Rct ∥ CPE)',
+  'Selected loading': 'بارگذاری انتخاب‌شده', 'The five measured samples': 'پنج نمونه‌ی اندازه‌گیری‌شده',
+  'Polarization: j = 10 · 10^((η − η₁₀)/b) through the reported η at 10 mA/cm² with the reported Tafel slope b. It has no onset region, no capacitive current and no iR drop, and the paper scanned at 50 mV/s, faster than the 1 to 5 mV/s usual for OER. Nyquist: Z = Rs + 1/(1/Rct + Q(jω)ⁿ) from 0.01 Hz to 100 kHz using Table S3. The paper mentions two time constants but Table S3 lists one CPE, so only one loop is drawn. The unit of Q is not given in the supplement; S·sⁿ is assumed.': 'قطبش: j = 10 · 10^((η − η₁₀)/b) که از اضافه‌ولتاژ گزارش‌شده در 10 mA/cm² با شیب تافل گزارش‌شده b می‌گذرد. ناحیه‌ی شروع، جریان خازنی و افت iR ندارد، و مقاله با سرعت 50 mV/s اسکن کرده که از 1 تا 5 mV/s رایج در OER سریع‌تر است. نایکویست: Z = Rs + 1/(1/Rct + Q(jω)ⁿ) از 0.01 Hz تا 100 kHz با جدول S3. مقاله از دو ثابت زمانی نام می‌برد ولی جدول S3 یک CPE دارد، پس فقط یک حلقه رسم می‌شود. واحد Q در ضمیمه نیامده و S·sⁿ فرض شده است.',
+  'Configurational entropy against Cu': 'آنتروپی پیکربندی در برابر Cu', 'Cu loading (atom %)': 'بارگذاری Cu (درصد اتمی)',
+  'ΔS = −R Σ xᵢ ln xᵢ over the five metals, counting all cations together and taking the other four as equal. A spinel has two cation sublattices, so this is a simplification. The 1.5R limit for "high entropy" comes from alloys and is a convention for oxides; the lower limit of "medium entropy" is 1.0R in some sources and 0.69R in others. Circles use the ICP-MS compositions of Table S1; the line assumes the nominal ones.': 'ΔS = −R Σ xᵢ ln xᵢ روی پنج فلز، با شمارش همه‌ی کاتیون‌ها با هم و برابر گرفتن چهار فلز دیگر. اسپینل دو زیرشبکه‌ی کاتیونی دارد، پس این یک ساده‌سازی است. مرز 1.5R برای «پرآنتروپی» از آلیاژها آمده و برای اکسیدها قرارداد است؛ مرز پایین «آنتروپی متوسط» در بعضی منابع 1.0R و در بعضی 0.69R است. دایره‌ها از ترکیب ICP-MS جدول S1 و خط از ترکیب اسمی است.',
+  'How many replicates to tell two loadings apart?': 'چند تکرار لازم است تا دو بارگذاری از هم تشخیص داده شوند؟',
+  'Sample A (Cu %)': 'نمونه‌ی A (Cu %)', 'Sample B (Cu %)': 'نمونه‌ی B (Cu %)',
+  'Run-to-run spread of the overpotential (SD)': 'پراکندگی اضافه‌ولتاژ بین تکرارها (SD)',
+  'Electrodes per loading, n': 'الکترود برای هر بارگذاری، n', 'Chance of a significant difference': 'احتمال دیدن تفاوت معنادار',
+  'Monte Carlo, 2000 simulated experiments per point: n electrodes per loading, equal-variance two-sided t-test at 5 %. The spread is your assumption. A round robin of the rotating-disk method found about 50 mV between laboratories for the same catalyst at 10 mA/cm², and less inside one laboratory, so measure your own by repeating one electrode.': 'مونت‌کارلو، 2000 آزمایش شبیه‌سازی‌شده در هر نقطه: n الکترود برای هر بارگذاری، آزمون t دوطرفه با واریانس برابر در سطح 5 %. پراکندگی فرض شماست. یک مقایسه‌ی بین‌آزمایشگاهی روش الکترود دیسک چرخان برای یک کاتالیزور در 10 mA/cm² حدود 50 mV اختلاف بین آزمایشگاه‌ها یافته و درون یک آزمایشگاه کمتر بوده است؛ پس پراکندگی خودتان را با تکرار یک الکترود بسنجید.',
+  '⬇ Download this tool (single HTML file, works offline)': '⬇ دانلود این ابزار (یک فایل HTML، آفلاین هم کار می‌کند)',
+  'Independent planning tool, not made by or affiliated with the authors. With five single measurements the band is a guide for choosing experiments and carries no claim about the true optimum. The LSV analyzer has been checked on a synthetic curve with a known answer, not on laboratory data, so compare it with your usual workflow on one real sample before relying on it.': 'ابزار برنامه‌ریزی مستقل است و نویسندگان آن را نساخته‌اند و وابسته به آن‌ها نیست. با پنج اندازه‌گیری تکی، باند فقط راهنمای انتخاب آزمایش‌هاست و ادعایی درباره‌ی بهینه‌ی واقعی ندارد. تحلیل‌گر LSV روی یک منحنی ساختگی با پاسخ معلوم آزموده شده، نه روی داده‌ی آزمایشگاهی؛ پیش از تکیه بر آن، روی یک نمونه‌ی واقعی با روش معمول خودتان مقایسه کنید.',
+  '570 mV overpotential': 'اضافه‌ولتاژ 570 mV',
+  /* text built by the code */
+  'Enter the measured value.': 'مقدار اندازه‌گیری‌شده را وارد کنید.',
+  'Added as a replicate.': 'به‌عنوان تکرار افزوده شد.', 'Noise can now be estimated from the data.': 'اکنون نویز را می‌توان از روی داده برآورد کرد.',
+  'Added.': 'افزوده شد.', 'The plan has been updated.': 'برنامه به‌روز شد.',
+  'Paste two columns of numbers first, or load the synthetic example.': 'نخست دو ستون عدد را بچسبانید یا نمونه‌ی ساختگی را بارگذاری کنید.',
+  'Enter the electrolyte pH.': 'pH الکترولیت را وارد کنید.',
+  'The Tafel window needs a lower value below the upper one.': 'پنجره‌ی تافل باید حد پایین کمتر از حد بالا داشته باشد.',
+  'Need at least 5 numeric rows (potential, current).': 'دست‌کم 5 ردیف عددی (پتانسیل، جریان) لازم است.',
+  'Target current density must be above zero.': 'چگالی جریان هدف باید بیشتر از صفر باشد.',
+  'Enter the electrode area to convert current to density.': 'برای تبدیل جریان به چگالی، مساحت الکترود را وارد کنید.',
+  'Overpotential is outside 0 to 1000 mV.': 'اضافه‌ولتاژ خارج از بازه‌ی 0 تا 1000 mV است.',
+  'Check the reference electrode, pH and current units.': 'الکترود مرجع، pH و یکای جریان را بررسی کنید.',
+  'The Tafel window spans less than 0.2 decades.': 'پنجره‌ی تافل کمتر از 0.2 دهه را می‌پوشاند.', 'Widen it.': 'آن را پهن‌تر کنید.',
+  'Fewer than 3 points fall in the Tafel window.': 'کمتر از 3 نقطه در پنجره‌ی تافل می‌افتد.',
+  'Current sign was flipped.': 'علامت جریان برعکس شد.',
+  'Overpotential': 'اضافه‌ولتاژ', 'n/a': '—', 'target not reached': 'به هدف نرسید', 'window not usable': 'پنجره قابل‌استفاده نیست', 'Points used': 'نقاط استفاده‌شده',
+  'log10 j (j in mA/cm²)': 'log10 j (j برحسب mA/cm²)',
+  'Analyze a curve first.': 'نخست یک منحنی را تحلیل کنید.',
+  'Nothing to add: neither value could be determined.': 'چیزی برای افزودن نیست: هیچ‌یک از دو مقدار تعیین نشد.',
+  'Synthetic curve built with η = 252 mV and a 64.5 mV/dec slope.': 'منحنی ساختگی با η = 252 mV و شیب 64.5 mV/dec ساخته شده است.',
+  'These are the paper values for 40 % Cu, so the analyzer should return them.': 'این‌ها مقادیر مقاله برای 40 % Cu هستند، پس تحلیل‌گر باید همین‌ها را برگرداند.',
+  'It is not measured data.': 'داده‌ی اندازه‌گیری‌شده نیست.',
+  'This loading was measured in the paper.': 'این بارگذاری در مقاله اندازه‌گیری شده است.',
+  'Between measured loadings: values are joined by straight lines.': 'بین بارگذاری‌های اندازه‌گیری‌شده: مقادیر با خط راست به هم وصل شده‌اند.',
+  'At or above the 1.5R convention for high entropy.': 'برابر یا بالاتر از مرز قراردادی 1.5R برای پرآنتروپی.',
+  'Between 1.0R and 1.5R, the usual medium-entropy range.': 'بین 1.0R و 1.5R، بازه‌ی معمول آنتروپی متوسط.',
+  'Below 1.0R.': 'کمتر از 1.0R.',
+  'Pick two different loadings.': 'دو بارگذاری متفاوت انتخاب کنید.',
+  'Even 20 electrodes per loading give under 80 %.': 'حتی 20 الکترود برای هر بارگذاری هم کمتر از 80 % شانس می‌دهد.'
+};
+var FA_LBL = { 'overpotential': 'اضافه‌ولتاژ', 'tafel slope': 'شیب تافل', 'rct': 'Rct', 'steady current': 'جریان پایدار' };
+var FA_RX = [
+  [/^(\d+) % of spread$/, '$1 % از پراکندگی داده'],
+  [/^e\.g\. (.+)$/, 'مثلاً $1'],
+  [/^Remove measurement at ([\d.]+) percent Cu$/, 'حذف اندازه‌گیری در $1 درصد Cu'],
+  [/^Noise in use: ([\d.]+) (.+?) from replicates \((\d+) degrees? of freedom\)\. Too few repeats for a reliable estimate; add more\.$/, 'نویز مورد استفاده: $1 $2 از تکرارها ($3 درجه‌ی آزادی). تعداد تکرار برای برآورد قابل‌اعتماد کم است؛ بیشتر اضافه کنید.'],
+  [/^Noise in use: ([\d.]+) (.+?) from replicates \((\d+) degrees? of freedom\)\.$/, 'نویز مورد استفاده: $1 $2 از تکرارها ($3 درجه‌ی آزادی).'],
+  [/^Noise in use: assumed, (\d+) % of the data spread\. Add repeat measurements at one Cu loading to estimate it from data\.$/, 'نویز مورد استفاده: فرضی، $1 % پراکندگی داده. برای برآورد از روی داده، چند اندازه‌گیری تکراری در یک بارگذاری Cu اضافه کنید.'],
+  [/^Noise in use: assumed, (\d+) % of the data spread\.$/, 'نویز مورد استفاده: فرضی، $1 % پراکندگی داده.'],
+  [/^Predicted (overpotential|tafel slope|rct|steady current) ([-\d.]+) (.+?) \(95% range ([-\d.]+) to ([-\d.]+)\)\. This is the loading between your tested points where a new run has the best chance to beat the current best\.$/, function (m, l, v, u, a, b) { return 'پیش‌بینی ' + FA_LBL[l] + ' ' + v + ' ' + u + ' (بازه‌ی 95%: ' + a + ' تا ' + b + '). این بارگذاری میان نقاط آزموده‌شده‌ی شماست که یک اجرای تازه در آن بیشترین شانس را برای شکست‌دادن بهترین مقدار فعلی دارد.'; }],
+  [/^Co, Ni, Fe, Mn ≈ ([\d.]+) % each$/, 'Co, Ni, Fe, Mn ≈ $1 % از هرکدام'],
+  [/^Trend optimum so far: ([\d.]+) % Cu \((.+)\)\.$/, 'بهینه‌ی روند تا اینجا: $1 % Cu ($2).'],
+  [/^Cu ([\d.]+) % → (.+?) \(95% band (.+?) to (.+?)\) EI (.+)$/, 'Cu $1 % → $2 (باند 95%: $3 تا $4) EI $5'],
+  [/^next: ([\d.]+) %$/, 'بعدی: $1 %'],
+  [/^Enter a Cu loading between (\d+) and (\d+) %\.$/, 'بارگذاری Cu را بین $1 و $2 % وارد کنید.'],
+  [/^Enter the Cu loading of this sample, between (\d+) and (\d+) %\.$/, 'بارگذاری Cu این نمونه را بین $1 و $2 % وارد کنید.'],
+  [/^Added (.+) for ([\d.]+) % Cu from the LSV analysis\.$/, function (m, w, c) { return 'افزوده شد: ' + w.replace('overpotential', 'اضافه‌ولتاژ').replace('Tafel slope', 'شیب تافل').replace(' and ', ' و ') + ' برای ' + c + ' % Cu از تحلیل LSV.'; }],
+  [/^The forward sweep never crosses ([\d.]+) mA\/cm²\.$/, 'روبش رفت هرگز از $1 mA/cm² نمی‌گذرد.'],
+  [/^mV at ([\d.]+) mA\/cm²$/, 'mV در $1 mA/cm²'],
+  [/^mV\/dec, R² ([\d.]+), (\d+) points$/, 'mV/dec، R² $1، $2 نقطه'],
+  [/^of (\d+) rows \(forward sweep\)$/, 'از $1 ردیف (روبش رفت)'],
+  [/^slope ([\d.]+) mV\/dec, R² ([\d.]+)$/, 'شیب $1 mV/dec، R² $2'],
+  [/^Ω, Rs ([\d.]+) Ω$/, 'Ω، Rs $1 Ω'],
+  [/^At ([\d.]+) % Cu: ΔS = ([\d.]+) R\.$/, 'در $1 % Cu: ΔS = $2 R.'],
+  [/^Difference in η between (\d+) % and (\d+) % Cu: (\d+) mV, assumed spread (\d+) mV per electrode\.$/, 'تفاوت η بین $1 % و $2 % Cu: $3 mV، با پراکندگی فرضی $4 mV برای هر الکترود.'],
+  [/^About (\d+) electrodes per loading give an 80 % chance of seeing it\.$/, 'حدود $1 الکترود برای هر بارگذاری شانس 80 % برای دیدن آن می‌دهد.'],
+  [/^With 3 electrodes the chance is (\d+) %\.$/, 'با 3 الکترود شانس برابر $1 % است.']
+];
+var FA_PAPERLINE = 'داده‌های مقاله: Mehrabi-Kalajahi و همکاران، <em>Scientific Reports</em> 16, 20035 (2026)؛ مقادیر از متن مقاله خوانده شده‌اند. مرجع نیکل‌فوم خالی: <span id="nf"></span>.';
+
+function trAtom(k) {
+  if (Object.prototype.hasOwnProperty.call(FA, k)) return FA[k];
+  for (var i = 0; i < FA_RX.length; i++) if (FA_RX[i][0].test(k)) return k.replace(FA_RX[i][0], FA_RX[i][1]);
+  return null;
+}
+function trText(s) {
+  var m = s.match(/^(\s*)([\s\S]*?)(\s*)$/), k = m[2].replace(/\s+/g, ' '), t, parts, any;
+  if (!k) return null;
+  t = trAtom(k);
+  if (t === null) {
+    parts = k.replace(/\.\s+(?=[A-Z])/g, '.\u0001').split('\u0001');
+    if (parts.length > 1) {
+      any = false;
+      t = parts.map(function (p) { var r = trAtom(p); if (r !== null) { any = true; return r; } return p; }).join(' ');
+      if (!any) t = null;
+    }
+  }
+  return t === null ? null : m[1] + t + m[3];
+}
+function translateTextNode(n) {
+  var pn = n.parentNode && n.parentNode.nodeName;
+  if (pn === 'SCRIPT' || pn === 'STYLE') return;
+  if (n.__tr !== undefined && n.__tr === n.nodeValue) return;
+  var t = trText(n.nodeValue);
+  if (t !== null && t !== n.nodeValue) { n.__en = n.nodeValue; n.__tr = t; n.nodeValue = t; }
+}
+function translateAttr(el, a) {
+  if (!el.hasAttribute || !el.hasAttribute(a)) return;
+  var v = el.getAttribute(a), t;
+  el.__ta = el.__ta || {};
+  if (el.__ta[a] && el.__ta[a].tr === v) return;
+  t = trText(v);
+  if (t !== null && t !== v) { el.__ta[a] = { en: v, tr: t }; el.setAttribute(a, t); }
+}
+function translateTree(root) {
+  if (root.nodeType === 3) { translateTextNode(root); return; }
+  if (root.nodeType !== 1) return;
+  var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), n, list = [];
+  while ((n = w.nextNode())) list.push(n);
+  list.forEach(translateTextNode);
+  Array.prototype.forEach.call(root.querySelectorAll('[placeholder],[aria-label]'), function (e) { translateAttr(e, 'placeholder'); translateAttr(e, 'aria-label'); });
+  translateAttr(root, 'placeholder'); translateAttr(root, 'aria-label');
+}
+function restoreAll() {
+  var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null), n;
+  while ((n = w.nextNode())) if (n.__tr !== undefined) { if (n.nodeValue === n.__tr) n.nodeValue = n.__en; n.__tr = undefined; }
+  Array.prototype.forEach.call(document.querySelectorAll('[placeholder],[aria-label]'), function (e) {
+    if (!e.__ta) return;
+    Object.keys(e.__ta).forEach(function (a) { if (e.getAttribute(a) === e.__ta[a].tr) e.setAttribute(a, e.__ta[a].en); });
+    e.__ta = null;
+  });
+}
+function applyLang(l) {
+  LANG = l;
+  document.documentElement.lang = l; document.documentElement.dir = l === 'fa' ? 'rtl' : 'ltr';
+  try { localStorage.setItem('heo-lang', l); } catch (e) {}
+  $('lang').textContent = l === 'fa' ? 'English' : 'فارسی';
+  var pl = $('paperline');
+  if (l === 'fa') { if (pl.__en === undefined) pl.__en = pl.innerHTML; pl.innerHTML = FA_PAPERLINE; }
+  else if (pl.__en !== undefined) { pl.innerHTML = pl.__en; pl.__en = undefined; }
+  if (l === 'fa') translateTree(document.body); else restoreAll();
+  render();
+  renderSim();
+}
+new MutationObserver(function (recs) {
+  if (LANG !== 'fa') return;
+  recs.forEach(function (r) {
+    if (r.type === 'childList') Array.prototype.forEach.call(r.addedNodes, translateTree);
+    else if (r.type === 'characterData') translateTextNode(r.target);
+    else if (r.type === 'attributes') translateAttr(r.target, r.attributeName);
+  });
+}).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'aria-label'] });
+$('lang').addEventListener('click', function () { applyLang(LANG === 'fa' ? 'en' : 'fa'); });
+if (LANG === 'fa') applyLang('fa');
 </script>
 </body>
 </html>
